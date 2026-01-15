@@ -1,0 +1,278 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider     = "prisma-client-js"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+  url          = env("DATABASE_URL")
+  engineType   = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  email         String         @unique
+  password      String?
+  firstName     String?
+  lastName      String?
+  phone         String?
+  dateOfBirth   DateTime?
+  profileImage  String?
+  addresses     Address[]
+  wishlist      Product[]
+  cart          CartItem[]
+  orders        Order[]
+  notifications Notification[]
+  walletBalance Int?
+  isAdmin       Boolean?
+  isEmployee    Boolean?
+  employeeRole  EmployeeRole?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  blogs         Blog[]
+}
+
+model Order {
+  id           String @id @default(uuid()) @db.Uuid
+  orderNumber  String @unique
+  userId       String @db.Uuid
+  customerName String
+  email        String
+  phone        String
+
+  status        String @default("pending")
+  paymentMethod String
+  paymentStatus String
+
+  totalPrice Int
+  subtotal   Int?
+  shipping   Int?
+  tax        Int?
+
+  addressName String?
+  address     String?
+  city        String?
+  state       String?
+  zip         String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  products OrderProduct[]
+  user     User           @relation(fields: [userId], references: [id])
+}
+
+model OrderProduct {
+  id        String @id @default(uuid()) @db.Uuid
+  orderId   String @db.Uuid
+  productId String @db.Uuid
+  quantity  Int
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Notification {
+  id        String                @id @default(uuid()) @db.Uuid
+  title     String?
+  message   String?
+  type      NotificationType?
+  read      Boolean               @default(false)
+  priority  NotificationPriority?
+  sentAt    DateTime?
+  readAt    DateTime?
+  sentBy    String?
+  actionUrl String?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  deletedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @db.Uuid
+}
+
+enum NotificationType {
+  promo
+  order
+  system
+  marketing
+  general
+}
+
+enum NotificationPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+model Address {
+  id        String    @id @default(uuid()) @db.Uuid
+  address   String?
+  user      User?     @relation(fields: [userId], references: [id])
+  userId    String?   @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model CartItem {
+  id        String    @id @default(uuid()) @db.Uuid
+  productId String?
+  quantity  String?
+  user      User?     @relation(fields: [userId], references: [id])
+  userId    String?   @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+enum EmployeeRole {
+  CALL_CENTER
+  PACKER
+  WARE_HOUSE
+  DELIVERY_MAN
+  INCHARGE
+  ACCOUNTS
+}
+
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String?
+  slug        String?
+  description String?
+  range       Int?
+  featured    Boolean?
+  imageUrl    String
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+}
+
+model Product {
+  id                 String               @id @default(uuid()) @db.Uuid
+  name               String?
+  slug               String?
+  images             ProductImage[]
+  description        String?
+  price              Int?
+  discount           Int?
+  categoryId         String?              @db.Uuid
+  category           Category?            @relation(fields: [categoryId], references: [id])
+  stock              Int?
+  status             ProductStatus?
+  isFeatured         Boolean?
+  averageRating      Int?
+  totalReviews       Int?
+  ratingDistribution RatingDistribution[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  deletedAt          DateTime?
+  user               User?                @relation(fields: [userId], references: [id])
+  userId             String?              @db.Uuid
+  brandId            String?              @db.Uuid
+  brand              Brand?               @relation(fields: [brandId], references: [id])
+}
+
+enum ProductStatus {
+  NEW
+  HOT
+  SALE
+  FEATURED
+  OUT_OF_STOCK
+  DISCONTINUED
+  PREORDER
+}
+
+model ProductImage {
+  id        Int       @id @default(autoincrement())
+  url       String?
+  alt       String?
+  productId String    @db.Uuid
+  product   Product   @relation(fields: [productId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Brand {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String    @unique
+  imageUrl  String?
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model RatingDistribution {
+  id         Int       @id @default(autoincrement())
+  fiveStars  Int?
+  fourStars  Int?
+  threeStars Int?
+  twoStars   Int?
+  oneStar    Int?
+  productId  String    @db.Uuid
+  product    Product   @relation(fields: [productId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+}
+
+model BlogCategory {
+  id    String @id @default(uuid()) @db.Uuid
+  title String
+  slug  String @unique
+
+  blogs Blog[] @relation("BlogCategories")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Blog {
+  id           String  @id @default(uuid()) @db.Uuid
+  title        String
+  slug         String  @unique
+  excerpt      String?
+  body         Json
+  mainImageUrl String?
+
+  isLatest    Boolean   @default(false)
+  publishedAt DateTime?
+
+  /**
+   * SEO
+   */
+  seoTitle       String?
+  seoDescription String?
+
+  /**
+   * AUTHOR = USER
+   */
+  authorId String @db.Uuid
+  author   User   @relation(fields: [authorId], references: [id])
+
+  /**
+   * CATEGORIES
+   */
+  categories BlogCategory[] @relation("BlogCategories")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([slug])
+  @@index([publishedAt])
+  @@index([isLatest])
+}
