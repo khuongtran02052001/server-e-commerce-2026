@@ -1,0 +1,15 @@
+FROM golang:1.23-alpine AS dev
+
+RUN apk add --no-cache git ca-certificates make tzdata && \
+    go install -v github.com/air-verse/air@v1.61.1
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+EXPOSE 8080
+
+CMD ["air", "-c", ".air.toml"]
