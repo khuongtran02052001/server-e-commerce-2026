@@ -23,7 +23,7 @@ func InitRouter(db *postgresql.PostgresDB) *gin.Engine {
 	router.Use(utils.CORSMiddleware())
 	router.Use(gin.Logger())
 
-	app := router.Group("/v1/api")
+	app := router.Group("service-blog/v1/api")
 
 	app.GET("/health-check", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "ok"})

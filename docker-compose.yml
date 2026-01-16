@@ -1,0 +1,71 @@
+services:
+  db:
+    image: postgres:15.2
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  blog:
+    build:
+      context: ./service-blog
+      dockerfile: ./docker/dockerfile.prod
+    env_file:
+      - ./service-blog/.env.dev
+      
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  product:
+    build:
+      context: ./service-product
+      dockerfile: ./dockerfile
+    env_file:
+      - ./service-product/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8081"
+
+  gateway:
+    image: caddy:2
+    depends_on:
+      - blog
+      - product
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+
+  nport:
+    image: node:20-bookworm-slim
+    depends_on:
+      - gateway
+    environment:
+      NPORT_SUBDOMAIN: service-system-ecom
+      TERM: dumb
+    command: >
+      sh -lc "
+        apt-get update &&
+        apt-get install -y --no-install-recommends socat ca-certificates &&
+        rm -rf /var/lib/apt/lists/* &&
+        socat TCP-LISTEN:8000,fork,reuseaddr TCP:gateway:8000 &
+        npx --yes -p nport nport 8000 -s \"$$NPORT_SUBDOMAIN\" -l vi 2>&1 | cat
+      "
+    tty: true
+    stdin_open: true
+
+volumes:
+  postgres_data:

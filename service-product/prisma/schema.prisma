@@ -8,12 +8,11 @@ generator client {
   provider     = "prisma-client-js"
   output       = "../generated/prisma"
   moduleFormat = "cjs"
-  url          = env("DATABASE_URL")
-  engineType   = "client"
 }
 
 datasource db {
   provider = "postgresql"
+
 }
 
 model User {
