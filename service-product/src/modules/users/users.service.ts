@@ -30,4 +30,7 @@ export class UsersService {
   removeUser(id: string): Promise<Omit<User, 'password'>> {
     return this.usersRepository.remove(id);
   }
+  findLiteByIds(ids: string[]): Promise<{ id: string; email: string }[]> {
+    return this.usersRepository.findLiteByIds(ids);
+  }
 }

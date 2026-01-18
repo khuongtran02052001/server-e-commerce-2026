@@ -57,4 +57,11 @@ export class UsersRepository {
   remove(id: string) {
     return this.prisma.user.delete({ where: { id }, omit: { password: true } });
   }
+
+  findLiteByIds(ids: string[]) {
+    return this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, email: true, firstName: true, lastName: true },
+    });
+  }
 }

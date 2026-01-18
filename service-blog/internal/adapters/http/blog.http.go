@@ -19,7 +19,7 @@ func NewBlogHttpHandler(app *gin.RouterGroup, blogInput blogDomain.Service) *Blo
 }
 
 func (h *BlogHttpHandler) RegisterBlogRoutes() {
-	blogs := h.app.Group("/blogs")
+	blogs := h.app.Group("/")
 	blogs.GET("", h.FindAll)
 	blogs.GET("/latest", h.Latest)
 	blogs.GET("/slug/:slug", h.FindBySlug)

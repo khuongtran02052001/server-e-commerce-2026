@@ -6,7 +6,7 @@ import (
 
 // AuthorClient là client gọi sang Auth/User service
 type AuthorClient interface {
-	FindLiteByID(authorID string) (*blogDomain.AuthorLite, error)
+	BatchFindLiteByIDs(authorIDs []string) (map[string]blogDomain.AuthorLite, error)
 }
 
 type BlogApi struct {
@@ -46,9 +46,13 @@ func (a *BlogApi) FindBySlug(slug string) (blogDomain.BlogResponse, error) {
 		return blogDomain.BlogResponse{}, err
 	}
 	if a.authorClient != nil && res.AuthorID != "" {
-		author, _ := a.authorClient.FindLiteByID(res.AuthorID)
-		res.Author = author
+		m, _ := a.authorClient.BatchFindLiteByIDs([]string{res.AuthorID})
+		if u, ok := m[res.AuthorID]; ok {
+			u2 := u
+			res.Author = &u2
+		}
 	}
+
 	return res, nil
 }
 
@@ -61,12 +65,34 @@ func (a *BlogApi) Remove(id string) (bool, error) {
 }
 
 func (a *BlogApi) fillAuthors(list []blogDomain.BlogResponse) {
-	if a.authorClient == nil {
+	if a.authorClient == nil || len(list) == 0 {
 		return
 	}
-	// đơn giản: gọi từng cái (sau này bạn tối ưu batch)
+
+	ids := make([]string, 0, len(list))
+	seen := map[string]struct{}{}
+
+	for _, b := range list {
+		if b.AuthorID == "" {
+			continue
+		}
+		if _, ok := seen[b.AuthorID]; ok {
+			continue
+		}
+		seen[b.AuthorID] = struct{}{}
+		ids = append(ids, b.AuthorID)
+	}
+
+	m, err := a.authorClient.BatchFindLiteByIDs(ids)
+	if err != nil {
+		// graceful degrade: auth lỗi thì vẫn trả blog, author nil
+		return
+	}
+
 	for i := range list {
-		author, _ := a.authorClient.FindLiteByID(list[i].AuthorID)
-		list[i].Author = author
+		if u, ok := m[list[i].AuthorID]; ok {
+			u2 := u
+			list[i].Author = &u2
+		}
 	}
 }

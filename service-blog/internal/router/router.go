@@ -4,6 +4,7 @@ import (
 	postgresql "module-shop/internal/adapters/db"
 	"module-shop/internal/adapters/http"
 	"module-shop/internal/infrastructure/api"
+	"module-shop/internal/infrastructure/clients"
 	"module-shop/internal/infrastructure/repository"
 	"module-shop/internal/shared/config"
 	"module-shop/internal/shared/utils"
@@ -36,7 +37,8 @@ func InitRouter(db *postgresql.PostgresDB) *gin.Engine {
 	blogService := blogDomain.NewBlogService(blogRepository)
 
 	// [scaffold:api_init]
-	blogApi := api.NewBlogApi(*blogService, nil)
+	authorClient := clients.NewAuthorHTTPClientFromEnv()
+	blogApi := api.NewBlogApi(*blogService, authorClient)
 
 	// [scaffold:http_register]
 	http.NewBlogHttpHandler(app, blogApi).RegisterBlogRoutes()

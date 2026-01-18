@@ -8,13 +8,17 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { ApiHeader, ApiTags } from '@nestjs/swagger';
 import { User } from 'generated/prisma';
 import { PaginateOptionsDTO } from 'src/common/dto/paginate-options.dto';
 import { PaginatedResult } from 'src/common/utils/data-paginator.util';
 import { AddressesService } from '../addresses/addresses.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { GetUserDto } from './dto/get-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { InternalTokenGuard } from './guards/internal-token.guard';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -53,5 +57,19 @@ export class UsersController {
   @Delete(':id/hard')
   removeUser(@Param('id', ParseUUIDPipe) id: string): Promise<Omit<User, 'password'>> {
     return this.usersService.removeUser(id);
+  }
+
+  @ApiTags('Internal')
+  @ApiHeader({
+    name: 'X-Internal-Token',
+    description: 'Internal service token',
+    required: true,
+  })
+  @UseGuards(InternalTokenGuard)
+  @Post('lite')
+  async lite(@Body() body: GetUserDto) {
+    const ids = Array.from(new Set(body.ids || [])).filter(Boolean);
+    const users = await this.usersService.findLiteByIds(ids);
+    return { data: users };
   }
 }
