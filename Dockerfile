@@ -22,8 +22,7 @@ WORKDIR /src/service-product
 COPY --from=product_deps /src/service-product/node_modules ./node_modules
 COPY service-product ./
 
-# generate prisma client -> tạo /src/service-product/generated/prisma
-RUN npx prisma generate
+# generate prisma client -> moved to runtime to avoid build-time env requirement
 RUN npm run build
 
 
