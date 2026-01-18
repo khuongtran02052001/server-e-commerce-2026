@@ -25,7 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to set trusted proxies: %v", err)
 	}
-	port := os.Getenv("SERVICE_BLOG_ENV")
+	port := os.Getenv("BLOG_PORT")
 	if port == "" {
 		port = "8080"
 	}
