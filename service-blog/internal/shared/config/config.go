@@ -8,14 +8,17 @@ import (
 )
 
 func LoadEnv() {
-	// Load the .env file if it exists
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("No .env file found: %v", err)
+	// Trên production (Koyeb) env được set từ dashboard, không cần .env
+	if os.Getenv("SERVICE_BLOG_ENV") == "production" {
+		return
+	}
+
+	// Local/dev: thử load .env, thiếu thì chỉ warn (không die)
+	if err := godotenv.Load(); err != nil {
+		log.Printf("No .env file found (ignored): %v", err)
 	}
 }
 
-// Function to get the value from an environment variable
 func GetEnv(key, defaultValue string) string {
 	value := os.Getenv(key)
 	if value == "" {
