@@ -1,11 +1,9 @@
-#!/usr/bin/env sh
-set -eu
+:{$PORT}
 
-echo "Start blog :8080"
-./blog &
+handle /service-blog/* {
+  reverse_proxy 127.0.0.1:8080
+}
 
-echo "Start product :${PRODUCT_PORT:-8081}"
-node dist/main.js &
-
-echo "Start caddy :${PORT}"
-exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+handle /service-product/* {
+  reverse_proxy 127.0.0.1:8081
+}

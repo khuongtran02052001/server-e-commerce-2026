@@ -2,10 +2,10 @@
 set -eu
 
 echo "Start blog :8080"
-./blog &
+APP_PORT="${APP_PORT:-8080}" /app/blog &
 
-echo "Start product :${PRODUCT_PORT:-8081}"
-node dist/main.js &
+echo "Start product :8081"
+PRODUCT_PORT="${PRODUCT_PORT:-8081}" node /app/product/dist/main.js &
 
 echo "Start caddy :${PORT}"
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile

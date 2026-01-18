@@ -10,16 +10,35 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/blog ./
 # ======================
 # PRODUCT build
 # ======================
-FROM node:20-bookworm-slim AS product_builder
-WORKDIR /src
-COPY service-product/package*.json ./service-product/
-WORKDIR /src/service-product
+# deps
+FROM node:20-bookworm-slim AS deps
+WORKDIR /app
+COPY package*.json ./
 RUN npm ci
-COPY service-product ./
 
-# prisma generate + build
+# builder
+FROM node:20-bookworm-slim AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# generate prisma client -> tạo /app/generated/prisma
 RUN npx prisma generate
 RUN npm run build
+
+# runner
+FROM node:20-bookworm-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/generated ./generated
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+
+CMD ["node", "dist/main.js"]
+
 
 # ======================
 # RUNTIME
