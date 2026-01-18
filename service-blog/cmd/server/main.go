@@ -25,6 +25,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to set trusted proxies: %v", err)
 	}
-
+	port := os.Getenv("SERVICE_BLOG_ENV")
+	if port == "" {
+		port = "8080"
+	}
+	router.Run(":" + port)
 	router.Run()
 }
