@@ -22,7 +22,9 @@ WORKDIR /src/service-product
 COPY --from=product_deps /src/service-product/node_modules ./node_modules
 COPY service-product ./
 
-# generate prisma client -> moved to runtime to avoid build-time env requirement
+# generate prisma client (dummy DATABASE_URL to satisfy prisma config during build)
+ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db?schema=public"
+RUN npx prisma generate --schema prisma/schema.prisma
 RUN npm run build
 
 
