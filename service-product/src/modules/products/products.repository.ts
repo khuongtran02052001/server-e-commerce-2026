@@ -59,4 +59,28 @@ export class ProductsRepository {
       where: { id },
     });
   }
+
+  async searchPagination({
+    where,
+    orderBy,
+    include,
+    page,
+    perPage,
+  }: {
+    where?: Prisma.ProductWhereInput;
+    orderBy?: Prisma.ProductOrderByWithRelationInput;
+    include?: Prisma.ProductInclude;
+    page?: number | string | undefined;
+    perPage?: number | string | undefined;
+  }): Promise<PaginatedResult<Product>> {
+    return dataPaginate(
+      this.prismaService.product,
+      {
+        where,
+        orderBy,
+        include,
+      },
+      { page, perPage },
+    );
+  }
 }

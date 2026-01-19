@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FindProductsQueryDTO } from './dto/find-products.dto';
+import { SearchProductsQueryDTO } from './dto/search-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
 
@@ -26,6 +27,16 @@ export class ProductsController {
   @Get()
   findProductsPagination(@Query() query: FindProductsQueryDTO) {
     return this.productsService.findProductsPagination(query);
+  }
+
+  @Get('/search')
+  searchProductsPagination(@Query() query: SearchProductsQueryDTO) {
+    return this.productsService.searchProductsPagination(query);
+  }
+
+  @Get('/featured')
+  featuredProductsPagination(@Query() query: FindProductsQueryDTO) {
+    return this.productsService.findProductsFeatured(query);
   }
 
   @Get(':id')
