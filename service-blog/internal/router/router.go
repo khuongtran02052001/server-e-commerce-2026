@@ -10,6 +10,9 @@ import (
 	"module-shop/internal/shared/utils"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	// [scaffold:domain_imports]
 	blogDomain "module-shop/internal/domain/blog"
 )
@@ -25,6 +28,8 @@ func InitRouter(db *postgresql.PostgresDB) *gin.Engine {
 	router.Use(gin.Logger())
 
 	app := router.Group("service-blog/v1/api")
+	app.Static("/openapi", "./openapi")
+	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/service-blog/v1/api/openapi/openapi.yaml")))
 
 	app.GET("/health-check", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "ok"})

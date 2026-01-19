@@ -1,0 +1,181 @@
+openapi: 3.0.3
+info:
+  title: Blog Service
+  version: "1.0"
+  description: Blog service API
+servers:
+  - url: /service-blog/v1/api
+paths:
+  /health-check:
+    $ref: "./blog.yaml#/paths/~1health-check"
+  /:
+    $ref: "./blog.yaml#/paths/~1"
+  /latest:
+    $ref: "./blog.yaml#/paths/~1latest"
+  /slug/{slug}:
+    $ref: "./blog.yaml#/paths/~1slug~1{slug}"
+  /{id}:
+    $ref: "./blog.yaml#/paths/~1{id}"
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+    OkResponse:
+      type: object
+      properties:
+        data:
+          type: boolean
+    BlogListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlogResponse"
+    BlogItemResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/BlogResponse"
+    BlogCategory:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        slug:
+          type: string
+    AuthorLite:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+    BlogResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        slug:
+          type: string
+        excerpt:
+          type: string
+          nullable: true
+        body:
+          type: object
+          additionalProperties: true
+        mainImageUrl:
+          type: string
+          nullable: true
+        isLatest:
+          type: boolean
+        publishedAt:
+          type: string
+          nullable: true
+        seoTitle:
+          type: string
+          nullable: true
+        seoDescription:
+          type: string
+          nullable: true
+        authorId:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        deletedAt:
+          type: string
+          nullable: true
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlogCategory"
+        author:
+          $ref: "#/components/schemas/AuthorLite"
+    CreateRequest:
+      type: object
+      required:
+        - title
+        - slug
+        - body
+      properties:
+        title:
+          type: string
+        slug:
+          type: string
+        excerpt:
+          type: string
+          nullable: true
+        body:
+          type: object
+          additionalProperties: true
+        mainImageUrl:
+          type: string
+          nullable: true
+        isLatest:
+          type: boolean
+          nullable: true
+        publishedAt:
+          type: string
+          nullable: true
+        seoTitle:
+          type: string
+          nullable: true
+        seoDescription:
+          type: string
+          nullable: true
+        categoryIds:
+          type: array
+          items:
+            type: string
+    UpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+        slug:
+          type: string
+          nullable: true
+        excerpt:
+          type: string
+          nullable: true
+        body:
+          type: object
+          additionalProperties: true
+        mainImageUrl:
+          type: string
+          nullable: true
+        isLatest:
+          type: boolean
+          nullable: true
+        publishedAt:
+          type: string
+          nullable: true
+        seoTitle:
+          type: string
+          nullable: true
+        seoDescription:
+          type: string
+          nullable: true
+        categoryIds:
+          type: array
+          items:
+            type: string

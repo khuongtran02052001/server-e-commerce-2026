@@ -1,0 +1,149 @@
+paths:
+  /health-check:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      tags:
+        - health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/HealthResponse"
+  /:
+    get:
+      summary: List blogs
+      operationId: listBlogs
+      tags:
+        - blog
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/BlogListResponse"
+    post:
+      summary: Create blog
+      operationId: createBlog
+      tags:
+        - blog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./openapi.yaml#/components/schemas/CreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/BlogItemResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/ErrorResponse"
+  /latest:
+    get:
+      summary: List latest blogs
+      operationId: listLatestBlogs
+      tags:
+        - blog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/BlogListResponse"
+  /slug/{slug}:
+    get:
+      summary: Get blog by slug
+      operationId: getBlogBySlug
+      tags:
+        - blog
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/BlogItemResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/ErrorResponse"
+  /{id}:
+    patch:
+      summary: Update blog
+      operationId: updateBlog
+      tags:
+        - blog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./openapi.yaml#/components/schemas/UpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/BlogItemResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/ErrorResponse"
+    delete:
+      summary: Delete blog
+      operationId: deleteBlog
+      tags:
+        - blog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/OkResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/ErrorResponse"
