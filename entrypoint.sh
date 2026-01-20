@@ -8,8 +8,12 @@ BLOG_PORT="${BLOG_PORT:-8080}"
 PRODUCT_PORT="${PRODUCT_PORT:-8081}"
 
 echo "Start blog :${BLOG_PORT}"
-BLOG_PORT="${BLOG_PORT}" /app/blog &
-BLOG_PID=$!
+(
+  cd /app/blog
+  BLOG_PORT="${BLOG_PORT}" ./blog &
+  echo $! > /tmp/blog.pid
+)
+BLOG_PID="$(cat /tmp/blog.pid)"
 
 echo "Start product :${PRODUCT_PORT}"
 PORT="${PRODUCT_PORT}" node /app/dist/main.js &

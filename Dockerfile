@@ -41,8 +41,10 @@ RUN apt-get update \
   && curl -fsSL "https://caddyserver.com/api/download?os=linux&arch=amd64" -o /usr/bin/caddy \
   && chmod +x /usr/bin/caddy
 
-# blog binary
-COPY --from=blog_builder /out/blog /app/blog
+# blog runtime (keep blog files together)
+RUN mkdir -p /app/blog
+COPY --from=blog_builder /out/blog /app/blog/blog
+COPY --from=blog_builder /src/service-blog/openapi /app/blog/openapi
 
 # product runtime
 COPY --from=product_builder /src/service-product/node_modules /app/node_modules

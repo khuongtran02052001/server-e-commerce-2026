@@ -16,6 +16,7 @@ USER appuser
 WORKDIR /home/appuser
 
 COPY --from=builder /goapp ./goapp
+COPY --from=builder /app/openapi ./openapi
 
 ENV GIN_MODE=release
 ENV APP_PORT=8080
