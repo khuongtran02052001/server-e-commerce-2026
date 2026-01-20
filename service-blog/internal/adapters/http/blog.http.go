@@ -23,6 +23,7 @@ func (h *BlogHttpHandler) RegisterBlogRoutes() {
 	blogs.GET("", h.FindAll)
 	blogs.GET("/latest", h.Latest)
 	blogs.GET("/slug/:slug", h.FindBySlug)
+	blogs.GET("/categories", h.FindAllBlogCategories)
 
 	blogs.POST("", h.Create) // add auth middleware here if needed
 	blogs.PATCH("/:id", h.Update)
@@ -31,6 +32,15 @@ func (h *BlogHttpHandler) RegisterBlogRoutes() {
 
 func (h *BlogHttpHandler) FindAll(c *gin.Context) {
 	list, err := h.blogInput.FindAll()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"data": list})
+}
+
+func (h *BlogHttpHandler) FindAllBlogCategories(c *gin.Context) {
+	list, err := h.blogInput.FindAllBlogCategories()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

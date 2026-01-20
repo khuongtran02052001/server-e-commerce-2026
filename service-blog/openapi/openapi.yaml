@@ -12,6 +12,8 @@ paths:
     $ref: "./blog.yaml#/paths/~1"
   /latest:
     $ref: "./blog.yaml#/paths/~1latest"
+  /categories:
+    $ref: "./blog.yaml#/paths/~1categories"
   /slug/{slug}:
     $ref: "./blog.yaml#/paths/~1slug~1{slug}"
   /{id}:
@@ -45,6 +47,13 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/BlogResponse"
+    BlogCategoryListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlogCategory"
     BlogCategory:
       type: object
       properties:

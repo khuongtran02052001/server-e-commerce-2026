@@ -92,6 +92,25 @@ func (r *BlogRepository) FindAll() ([]blogDomain.BlogResponse, error) {
 	return out, nil
 }
 
+func (r *BlogRepository) FindAllBlogCategories() ([]blogDomain.BlogCategory, error) {
+	var rows []models.BlogCategory
+	err := r.db.
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]blogDomain.BlogCategory, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, blogDomain.BlogCategory{
+			ID:    m.ID,
+			Title: m.Title,
+			Slug:  m.Slug,
+		})
+	}
+	return out, nil
+}
+
 func (r *BlogRepository) FindLatest(limit int) ([]blogDomain.BlogResponse, error) {
 	if limit <= 0 {
 		limit = 4

@@ -31,6 +31,14 @@ func (a *BlogApi) FindAll() ([]blogDomain.BlogResponse, error) {
 	return list, nil
 }
 
+func (a *BlogApi) FindAllBlogCategories() ([]blogDomain.BlogCategory, error) {
+	list, err := a.blogService.FindAllBlogCategories()
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
 func (a *BlogApi) FindLatest(limit int) ([]blogDomain.BlogResponse, error) {
 	list, err := a.blogService.FindLatest(limit)
 	if err != nil {

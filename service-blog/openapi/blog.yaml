@@ -67,6 +67,19 @@ paths:
             application/json:
               schema:
                 $ref: "./openapi.yaml#/components/schemas/BlogListResponse"
+  /categories:
+    get:
+      summary: List blog categories
+      operationId: listBlogCategories
+      tags:
+        - blog
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./openapi.yaml#/components/schemas/BlogCategoryListResponse"
   /slug/{slug}:
     get:
       summary: Get blog by slug

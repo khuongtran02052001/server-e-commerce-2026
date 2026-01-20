@@ -20,6 +20,10 @@ func (s *BlogService) FindAll() ([]BlogResponse, error) {
 	return s.repository.FindAll()
 }
 
+func (s *BlogService) FindAllBlogCategories() ([]BlogCategory, error) {
+	return s.repository.FindAllBlogCategories()
+}
+
 func (s *BlogService) FindLatest(limit int) ([]BlogResponse, error) {
 	if limit <= 0 {
 		limit = 4

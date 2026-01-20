@@ -8,6 +8,7 @@ import (
 	"module-shop/internal/infrastructure/repository"
 	"module-shop/internal/shared/config"
 	"module-shop/internal/shared/utils"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -28,6 +29,12 @@ func InitRouter(db *postgresql.PostgresDB) *gin.Engine {
 	router.Use(gin.Logger())
 
 	app := router.Group("service-blog/v1/api")
+	app.Use(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/service-blog/v1/api/openapi/") {
+			c.Writer.Header().Set("Cache-Control", "no-store")
+		}
+		c.Next()
+	})
 	app.Static("/openapi", "./openapi")
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/service-blog/v1/api/openapi/openapi.yaml")))
 
