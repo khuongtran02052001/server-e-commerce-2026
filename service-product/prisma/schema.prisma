@@ -165,8 +165,7 @@ model Product {
   description        String?
   price              Int?
   discount           Int?
-  categoryId         String?              @db.Uuid
-  category           Category?            @relation(fields: [categoryId], references: [id])
+  categories         Category[]
   stock              Int?
   status             ProductStatus?
   isFeatured         Boolean?

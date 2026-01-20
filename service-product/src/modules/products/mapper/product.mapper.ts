@@ -10,7 +10,9 @@ export function mapCreateProductDtoToPrisma(dto: CreateProductDto): Prisma.Produ
     description: dto.description,
     price: dto.price,
     discount: dto.discount,
-    category: { connect: { id: dto.CategoryId } },
+    categories: {
+      connect: (dto.categoryIds ?? []).map((id) => ({ id })),
+    },
     stock: dto.stock,
     status: dto.status,
     isFeatured: dto.isFeatured,
@@ -26,7 +28,11 @@ export function mapUpdateProductDtoToPrisma(dto: UpdateProductDto): Prisma.Produ
     description: dto.description,
     price: dto.price,
     discount: dto.discount,
-    category: { connect: { id: dto.CategoryId } },
+    categories: dto.categoryIds
+      ? {
+          set: dto.categoryIds.map((id) => ({ id })),
+        }
+      : undefined,
     stock: dto.stock,
     status: dto.status,
     isFeatured: dto.isFeatured,

@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, Product } from 'generated/prisma';
 import { PaginatedResult } from 'src/common/utils/data-paginator.util';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FindProductsQueryDTO } from './dto/find-products.dto';
+import { RelatedProductsQueryDTO } from './dto/related-products.dto';
 import { SearchProductsQueryDTO } from './dto/search-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { mapCreateProductDtoToPrisma, mapUpdateProductDtoToPrisma } from './mapper/product.mapper';
@@ -29,7 +30,7 @@ export class ProductsService {
       minPrice,
     } = query;
     const where: Prisma.ProductWhereInput = {};
-    if (category) where.category = { slug: category };
+    if (category) where.categories = { some: { slug: category } };
     if (variant) where.status = variant;
     if (brand) {
       where.brand = { slug: brand };
@@ -54,7 +55,7 @@ export class ProductsService {
         [sortField]: order,
       },
       include: {
-        category: true,
+        categories: true,
         brand: true,
         images: true,
         ratingDistribution: true,
@@ -96,7 +97,7 @@ export class ProductsService {
         : undefined,
       orderBy: { createdAt: 'desc' },
       include: {
-        category: true,
+        categories: true,
         brand: true,
         images: true,
         ratingDistribution: true,
@@ -115,11 +116,35 @@ export class ProductsService {
       },
       orderBy: { createdAt: 'desc' },
       include: {
-        category: true,
+        categories: true,
         brand: true,
         images: true,
         ratingDistribution: true,
       },
+    });
+  }
+
+  findRelatedProducts(query: RelatedProductsQueryDTO): Promise<Product[]> {
+    const { categoryIds, currentSlug } = query;
+    const limit = query.limit ?? 4;
+    let ids: string[] = [];
+
+    if (categoryIds) {
+      try {
+        const parsed = JSON.parse(categoryIds);
+        if (!Array.isArray(parsed)) {
+          throw new Error('categoryIds must be an array');
+        }
+        ids = parsed.filter((id) => typeof id === 'string' && id.trim() !== '');
+      } catch (err) {
+        throw new BadRequestException('categoryIds must be a JSON array of strings');
+      }
+    }
+
+    return this.productsRepository.findRelatedProducts({
+      categoryIds: ids,
+      currentSlug,
+      limit,
     });
   }
 }

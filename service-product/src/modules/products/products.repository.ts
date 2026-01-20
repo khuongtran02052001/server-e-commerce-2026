@@ -40,7 +40,7 @@ export class ProductsRepository {
     return this.prismaService.product.findFirst({
       where: { slug },
       include: {
-        category: true,
+        categories: true,
       },
     });
   }
@@ -85,5 +85,31 @@ export class ProductsRepository {
       },
       { page, perPage },
     );
+  }
+
+  findRelatedProducts(params: {
+    categoryIds: string[];
+    currentSlug?: string;
+    limit: number;
+  }): Promise<Product[]> {
+    const { categoryIds, currentSlug, limit } = params;
+    if (categoryIds.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.prismaService.product.findMany({
+      where: {
+        categories: { some: { id: { in: categoryIds } } },
+        ...(currentSlug ? { slug: { not: currentSlug } } : {}),
+      },
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        categories: true,
+        brand: true,
+        images: true,
+        ratingDistribution: true,
+      },
+    });
   }
 }

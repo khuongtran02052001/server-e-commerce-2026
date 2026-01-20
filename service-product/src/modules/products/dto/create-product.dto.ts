@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsNumber, IsString, IsUUID } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsNumber, IsString, IsUUID } from 'class-validator';
 import { ProductStatus } from 'generated/prisma';
 
 export class CreateProductDto {
@@ -19,8 +19,10 @@ export class CreateProductDto {
   @IsNumber()
   discount: number;
   @ApiProperty({ required: false })
-  @IsUUID()
-  CategoryId: string;
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsUUID('4', { each: true })
+  categoryIds: string[];
   @ApiProperty({ required: false })
   @IsNumber()
   stock: number;
