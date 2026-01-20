@@ -39,6 +39,9 @@ export class ProductsRepository {
   findOne(slug: string): Promise<Product | null> {
     return this.prismaService.product.findFirst({
       where: { slug },
+      include: {
+        category: true,
+      },
     });
   }
 
