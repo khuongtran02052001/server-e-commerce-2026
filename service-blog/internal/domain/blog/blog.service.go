@@ -24,6 +24,13 @@ func (s *BlogService) FindAllBlogCategories() ([]BlogCategory, error) {
 	return s.repository.FindAllBlogCategories()
 }
 
+func (s *BlogService) FindOthersBySlug(slug string, limit int) ([]BlogResponse, error) {
+	if limit <= 0 {
+		limit = 4
+	}
+	return s.repository.FindOthersBySlug(slug, limit)
+}
+
 func (s *BlogService) FindLatest(limit int) ([]BlogResponse, error) {
 	if limit <= 0 {
 		limit = 4

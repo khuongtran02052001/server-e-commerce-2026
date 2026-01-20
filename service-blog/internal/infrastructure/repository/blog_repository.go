@@ -111,6 +111,30 @@ func (r *BlogRepository) FindAllBlogCategories() ([]blogDomain.BlogCategory, err
 	return out, nil
 }
 
+func (r *BlogRepository) FindOthersBySlug(slug string, limit int) ([]blogDomain.BlogResponse, error) {
+	if limit <= 0 {
+		limit = 4
+	}
+
+	var rows []models.Blog
+	err := r.db.
+		Where("deleted_at IS NULL").
+		Where("slug <> ?", slug).
+		Preload("Categories").
+		Order("published_at DESC NULLS LAST").
+		Limit(limit).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]blogDomain.BlogResponse, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, mapBlogResponse(m))
+	}
+	return out, nil
+}
+
 func (r *BlogRepository) FindLatest(limit int) ([]blogDomain.BlogResponse, error) {
 	if limit <= 0 {
 		limit = 4
