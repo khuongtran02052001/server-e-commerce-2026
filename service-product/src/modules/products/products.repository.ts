@@ -36,9 +36,9 @@ export class ProductsRepository {
     );
   }
 
-  findOne(id: string): Promise<Product | null> {
-    return this.prismaService.product.findUnique({
-      where: { id },
+  findOne(slug: string): Promise<Product | null> {
+    return this.prismaService.product.findFirst({
+      where: { slug },
     });
   }
 

@@ -15,7 +15,7 @@ import { SearchProductsQueryDTO } from './dto/search-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
 
-@Controller('products')
+@Controller('')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
@@ -39,9 +39,9 @@ export class ProductsController {
     return this.productsService.findProductsFeatured(query);
   }
 
-  @Get(':id')
-  findProduct(@Param('id', ParseUUIDPipe) id: string) {
-    return this.productsService.findProduct(id);
+  @Get(':slug')
+  findProduct(@Param('slug') slug: string) {
+    return this.productsService.findProduct(slug);
   }
 
   @Patch(':id')

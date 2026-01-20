@@ -62,8 +62,8 @@ export class ProductsService {
     });
   }
 
-  findProduct(id: string): Promise<Product | null> {
-    return this.productsRepository.findOne(id);
+  findProduct(slug: string): Promise<Product | null> {
+    return this.productsRepository.findOne(slug);
   }
 
   async updateProduct(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
