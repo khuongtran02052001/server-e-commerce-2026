@@ -19,6 +19,11 @@ export class BrandsController {
     return this.brandsService.findAll();
   }
 
+  @Get('slug/:slug')
+  findSlug(@Param('slug') slug: string) {
+    return this.brandsService.findSlug(slug);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.brandsService.findOne(id);

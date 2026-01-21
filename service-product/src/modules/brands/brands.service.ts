@@ -27,6 +27,14 @@ export class BrandsService {
     return brand;
   }
 
+  async findSlug(slug: string) {
+    const brand = await this.brandsRepo.findBySlug(slug);
+    if (!brand) {
+      throw new NotFoundException('Brand not found');
+    }
+    return brand;
+  }
+
   async update(id: string, dto: UpdateBrandDto) {
     await this.findOne(id);
 
