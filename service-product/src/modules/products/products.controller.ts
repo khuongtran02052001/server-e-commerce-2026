@@ -25,7 +25,7 @@ export class ProductsController {
     return this.productsService.createProduct(createProductDto);
   }
 
-  @Get()
+  @Get('/all')
   findProductsPagination(@Query() query: FindProductsQueryDTO) {
     return this.productsService.findProductsPagination(query);
   }
