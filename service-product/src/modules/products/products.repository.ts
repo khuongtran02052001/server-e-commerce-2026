@@ -41,6 +41,9 @@ export class ProductsRepository {
       where: { slug },
       include: {
         categories: true,
+        images: true,
+        brand: true,
+        ratingDistribution: true,
       },
     });
   }
