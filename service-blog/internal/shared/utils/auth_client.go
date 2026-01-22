@@ -24,7 +24,7 @@ type AuthClient struct {
 }
 
 // Env cần có:
-// AUTH_SERVICE_BASE_URL=http://localhost:8081/service-product/v1/api
+// AUTH_SERVICE_BASE_URL=http://localhost:8081/service-shop/v1/api
 // INTERNAL_TOKEN=super-secret
 
 func NewAuthClientFromEnv() *AuthClient {

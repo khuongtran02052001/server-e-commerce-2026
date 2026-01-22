@@ -12,15 +12,15 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/blog ./
 # ======================
 # deps
 FROM node:20-bookworm-slim AS product_deps
-WORKDIR /src/service-product
-COPY service-product/package*.json ./
+WORKDIR /src/service-shop
+COPY service-shop/package*.json ./
 RUN npm ci
 
 # builder
 FROM node:20-bookworm-slim AS product_builder
-WORKDIR /src/service-product
-COPY --from=product_deps /src/service-product/node_modules ./node_modules
-COPY service-product ./
+WORKDIR /src/service-shop
+COPY --from=product_deps /src/service-shop/node_modules ./node_modules
+COPY service-shop ./
 
 # generate prisma client (dummy DATABASE_URL to satisfy prisma config during build)
 ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db?schema=public"
@@ -47,11 +47,11 @@ COPY --from=blog_builder /out/blog /app/blog/blog
 COPY --from=blog_builder /src/service-blog/openapi /app/blog/openapi
 
 # product runtime
-COPY --from=product_builder /src/service-product/node_modules /app/node_modules
-COPY --from=product_builder /src/service-product/dist /app/dist
-COPY --from=product_builder /src/service-product/generated /app/generated
-COPY --from=product_builder /src/service-product/prisma /app/prisma
-COPY --from=product_builder /src/service-product/prisma.config.ts /app/prisma.config.ts
+COPY --from=product_builder /src/service-shop/node_modules /app/node_modules
+COPY --from=product_builder /src/service-shop/dist /app/dist
+COPY --from=product_builder /src/service-shop/generated /app/generated
+COPY --from=product_builder /src/service-shop/prisma /app/prisma
+COPY --from=product_builder /src/service-shop/prisma.config.ts /app/prisma.config.ts
 
 # caddy config + entrypoint
 COPY Caddyfile.koyeb /etc/caddy/Caddyfile

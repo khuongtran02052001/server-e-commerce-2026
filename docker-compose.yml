@@ -27,12 +27,12 @@ services:
     expose:
       - "8080"
 
-  product:
+  shop:
     build:
-      context: ./service-product
+      context: ./service-shop
       dockerfile: ./dockerfile
     env_file:
-      - ./service-product/.env
+      - ./service-shop/.env
     depends_on:
       db:
         condition: service_healthy

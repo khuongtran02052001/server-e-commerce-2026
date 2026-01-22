@@ -10,6 +10,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { OrdersModule } from './modules/orders/orders.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { ProductsModule } from './modules/products/products.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { UsersModule } from './modules/users/users.module';
     PrismaModule,
     UsersModule,
     ProductsModule,
+    ReviewsModule,
     CategoriesModule,
     NotificationsModule,
     AddressesModule,

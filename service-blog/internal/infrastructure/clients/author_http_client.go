@@ -22,7 +22,7 @@ type AuthorHTTPClient struct {
 
 func NewAuthorHTTPClientFromEnv() *AuthorHTTPClient {
 	return &AuthorHTTPClient{
-		baseURL: os.Getenv("AUTH_SERVICE_BASE_URL"), // vd: http://localhost:8081/service-product/v1/api
+		baseURL: os.Getenv("AUTH_SERVICE_BASE_URL"), // vd: http://localhost:8081/service-shop/v1/api
 		token:   os.Getenv("INTERNAL_TOKEN"),        // super-secret
 		httpc:   &http.Client{Timeout: 15 * time.Second},
 	}

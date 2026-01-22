@@ -14,7 +14,7 @@ export class BrandsController {
     return this.brandsService.create(dto);
   }
 
-  @Get('/all')
+  @Get()
   findAll() {
     return this.brandsService.findAll();
   }

@@ -16,7 +16,7 @@ import { SearchProductsQueryDTO } from './dto/search-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
 
-@Controller('')
+@Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
@@ -25,7 +25,7 @@ export class ProductsController {
     return this.productsService.createProduct(createProductDto);
   }
 
-  @Get('/all')
+  @Get()
   findProductsPagination(@Query() query: FindProductsQueryDTO) {
     return this.productsService.findProductsPagination(query);
   }

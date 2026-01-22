@@ -37,6 +37,8 @@ model User {
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
   blogs         Blog[]
+  reviews       Review[]
+  reviewHelpful ReviewHelpful[]
 }
 
 model Order {
@@ -172,6 +174,7 @@ model Product {
   averageRating      Int?
   totalReviews       Int?
   ratingDistribution RatingDistribution[]
+  reviews            Review[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   deletedAt          DateTime?
@@ -225,6 +228,45 @@ model RatingDistribution {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+model Review {
+  id                 String         @id @default(uuid()) @db.Uuid
+  productId          String         @db.Uuid
+  userId             String         @db.Uuid
+  rating             Int
+  title              String
+  content            String
+  helpful            Int            @default(0)
+  isVerifiedPurchase Boolean        @default(false)
+  status             ReviewStatus   @default(pending)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
+
+  product   Product        @relation(fields: [productId], references: [id])
+  user      User           @relation(fields: [userId], references: [id])
+  helpfulBy ReviewHelpful[]
+
+  @@index([productId, status, createdAt])
+  @@unique([productId, userId])
+}
+
+model ReviewHelpful {
+  reviewId String   @db.Uuid
+  userId   String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@id([reviewId, userId])
 }
 
 model BlogCategory {
