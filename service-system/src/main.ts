@@ -36,9 +36,9 @@ async function bootstrap() {
     )
     .build();
 
-  app.setGlobalPrefix('service-shop/v1/api');
+  app.setGlobalPrefix('service-system/v1/api');
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('service-shop/v1/api/swagger', app, document);
+  SwaggerModule.setup('service-system/v1/api/swagger', app, document);
   app.enableCors(corsOptions);
   await app.listen(process.env.PRODUCT_PORT ?? 8081);
 }

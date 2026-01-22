@@ -29,10 +29,10 @@ services:
 
   shop:
     build:
-      context: ./service-shop
+      context: ./service-system
       dockerfile: ./dockerfile
     env_file:
-      - ./service-shop/.env
+      - ./service-system/.env
     depends_on:
       db:
         condition: service_healthy

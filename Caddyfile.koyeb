@@ -4,6 +4,6 @@ handle /service-blog/* {
   reverse_proxy 127.0.0.1:8080
 }
 
-handle /service-shop/* {
+handle /service-system/* {
   reverse_proxy 127.0.0.1:8081
 }
