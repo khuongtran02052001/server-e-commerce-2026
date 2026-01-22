@@ -25,6 +25,32 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Service-system API
+
+Base URL: `https://identical-carmel-serverless-87721e49.koyeb.app/service-system/v1/api`
+
+Controllers overview:
+
+- `AuthController` - JWT auth (`/auth/google-login`, `/auth/me`), `nextauth` stub.
+- `UsersController` - admin CRUD users (`/users`).
+- `UserController` - current-user features (`/user/*`: profile, settings, status, points, orders, notifications, addresses, reviews).
+- `ProductsController` - product CRUD + search/featured/related.
+- `CategoriesController` - category CRUD.
+- `BrandsController` - brand CRUD + slug lookup.
+- `BlogsController` - blog CRUD + latest/slug.
+- `OrdersController` - order CRUD + count/refund/pay/invoice mocks.
+- `AddressesController` - address CRUD.
+- `NotificationsController` - notifications read/delete.
+- `ReviewsController` - product reviews + helpful.
+- `AdminController` - admin analytics/stats/accounts/users/notifications/reviews/subscriptions.
+- `AnalyticsController` - event tracking + best sellers.
+- `NewsletterController` - subscribe/unsubscribe.
+- `ContactController` - contact form submission.
+- `CheckoutController` - checkout endpoints (mock).
+- `WebhookController` - webhook endpoint (mock).
+- `DebugController` - debug utilities.
+- `UserDataController` - fetch user data by email.
+
 ## Project setup
 
 ```bash

@@ -33,6 +33,25 @@ model User {
   isAdmin       Boolean?
   isEmployee    Boolean?
   employeeRole  EmployeeRole?
+  rewardPoints  Int?
+  loyaltyPoints Int?
+  totalSpent    Int?
+  lastLogin     DateTime?
+  isActive      Boolean?      @default(false)
+  isBusiness    Boolean?      @default(false)
+  membershipType String?
+  premiumStatus  PremiumStatus @default(none)
+  businessStatus BusinessStatus @default(none)
+  premiumAppliedAt  DateTime?
+  premiumApprovedAt DateTime?
+  premiumApprovedBy String?
+  premiumRejectedAt DateTime?
+  businessAppliedAt  DateTime?
+  businessApprovedAt DateTime?
+  businessApprovedBy String?
+  businessRejectedAt DateTime?
+  rejectionReason String?
+  preferences   Json?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
@@ -136,6 +155,48 @@ model CartItem {
   deletedAt DateTime?
 }
 
+model UserAccessRequest {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?
+  email       String
+  firstName   String?
+  lastName    String?
+  status      String   @default("pending")
+  requestedAt DateTime @default(now())
+  approvedAt  DateTime?
+  approvedBy  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NewsletterSubscription {
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String   @unique
+  status         String   @default("subscribed")
+  subscribedAt   DateTime @default(now())
+  unsubscribedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  subject   String?
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventName   String
+  eventParams Json?
+  userId      String?
+  createdAt   DateTime @default(now())
+}
+
 enum EmployeeRole {
   CALL_CENTER
   PACKER
@@ -143,6 +204,22 @@ enum EmployeeRole {
   DELIVERY_MAN
   INCHARGE
   ACCOUNTS
+}
+
+enum PremiumStatus {
+  none
+  pending
+  active
+  rejected
+  cancelled
+}
+
+enum BusinessStatus {
+  none
+  pending
+  active
+  rejected
+  cancelled
 }
 
 model Category {
@@ -228,6 +305,8 @@ model RatingDistribution {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
+
+  @@unique([productId])
 }
 
 enum ReviewStatus {
@@ -246,6 +325,9 @@ model Review {
   helpful            Int            @default(0)
   isVerifiedPurchase Boolean        @default(false)
   status             ReviewStatus   @default(pending)
+  approvedAt         DateTime?
+  approvedBy         String?
+  adminNotes         String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?

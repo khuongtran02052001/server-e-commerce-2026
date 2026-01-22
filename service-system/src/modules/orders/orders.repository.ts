@@ -29,4 +29,8 @@ export class OrdersRepository {
       include: { products: true },
     });
   }
+
+  countByUserId(userId: string) {
+    return this.prisma.order.count({ where: { userId } });
+  }
 }

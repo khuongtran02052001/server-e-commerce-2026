@@ -62,4 +62,9 @@ export class OrdersService {
 
     return order;
   }
+
+  async getOrdersCount(userId: string) {
+    const totalOrders = await this.repo.countByUserId(userId);
+    return { success: true, totalOrders };
+  }
 }

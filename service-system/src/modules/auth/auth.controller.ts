@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { All, Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import * as currentUserUtil from 'src/common/utils/current-user.util';
 import { AuthService } from './auth.service';
@@ -18,5 +18,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   getMe(@currentUserUtil.CurrentUser() user: currentUserUtil.CurrentUserType) {
     return this.authService.getMe(user.id);
+  }
+
+  @All('nextauth')
+  nextAuthStub() {
+    return { success: false, message: 'NextAuth is not supported in REST mode' };
   }
 }
