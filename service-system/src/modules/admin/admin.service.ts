@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from 'generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -12,16 +18,33 @@ export class AdminService {
   }
 
   async getAccountRequests() {
-    const [premiumRequests, businessRequests, approvedPremiumAccounts, approvedBusinessAccounts, allUsers] =
-      await Promise.all([
-        this.prisma.user.findMany({ where: { premiumStatus: 'pending' }, orderBy: { premiumAppliedAt: 'desc' } }),
-        this.prisma.user.findMany({ where: { businessStatus: 'pending' }, orderBy: { businessAppliedAt: 'desc' } }),
-        this.prisma.user.findMany({ where: { premiumStatus: 'active' }, orderBy: { premiumApprovedAt: 'desc' } }),
-        this.prisma.user.findMany({ where: { businessStatus: 'active' }, orderBy: { businessApprovedAt: 'desc' } }),
-        this.prisma.user.findMany({
-          where: { OR: [{ premiumStatus: { not: 'none' } }, { businessStatus: { not: 'none' } }] },
-        }),
-      ]);
+    const [
+      premiumRequests,
+      businessRequests,
+      approvedPremiumAccounts,
+      approvedBusinessAccounts,
+      allUsers,
+    ] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { premiumStatus: 'pending' },
+        orderBy: { premiumAppliedAt: 'desc' },
+      }),
+      this.prisma.user.findMany({
+        where: { businessStatus: 'pending' },
+        orderBy: { businessAppliedAt: 'desc' },
+      }),
+      this.prisma.user.findMany({
+        where: { premiumStatus: 'active' },
+        orderBy: { premiumApprovedAt: 'desc' },
+      }),
+      this.prisma.user.findMany({
+        where: { businessStatus: 'active' },
+        orderBy: { businessApprovedAt: 'desc' },
+      }),
+      this.prisma.user.findMany({
+        where: { OR: [{ premiumStatus: { not: 'none' } }, { businessStatus: { not: 'none' } }] },
+      }),
+    ]);
 
     return {
       success: true,
@@ -179,7 +202,12 @@ export class AdminService {
     });
   }
 
-  async updateBusinessAccount(accountId: string, approve: boolean, adminEmail: string, reason?: string) {
+  async updateBusinessAccount(
+    accountId: string,
+    approve: boolean,
+    adminEmail: string,
+    reason?: string,
+  ) {
     return this.prisma.user.update({
       where: { id: accountId },
       data: approve
@@ -201,7 +229,12 @@ export class AdminService {
     });
   }
 
-  async updatePremiumAccount(accountId: string, approve: boolean, adminEmail: string, reason?: string) {
+  async updatePremiumAccount(
+    accountId: string,
+    approve: boolean,
+    adminEmail: string,
+    reason?: string,
+  ) {
     return this.prisma.user.update({
       where: { id: accountId },
       data: approve
@@ -228,9 +261,9 @@ export class AdminService {
     const where = query
       ? {
           OR: [
-            { email: { contains: query, mode: 'insensitive' } },
-            { firstName: { contains: query, mode: 'insensitive' } },
-            { lastName: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: Prisma.QueryMode.insensitive } },
+            { firstName: { contains: query, mode: Prisma.QueryMode.insensitive } },
+            { lastName: { contains: query, mode: Prisma.QueryMode.insensitive } },
           ],
         }
       : undefined;
@@ -319,7 +352,17 @@ export class AdminService {
     return this.prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
-  async sendNotifications(recipients: string[], payload: { title: string; message: string; type?: string; priority?: string; actionUrl?: string; sentBy?: string; }) {
+  async sendNotifications(
+    recipients: string[],
+    payload: {
+      title: string;
+      message: string;
+      type?: string;
+      priority?: string;
+      actionUrl?: string;
+      sentBy?: string;
+    },
+  ) {
     const created = await this.prisma.notification.createMany({
       data: recipients.map((userId) => ({
         userId,
@@ -335,12 +378,19 @@ export class AdminService {
     return {
       success: true,
       message: 'Notifications sent successfully',
-      stats: { total: recipients.length, successful: created.count, failed: recipients.length - created.count },
+      stats: {
+        total: recipients.length,
+        successful: created.count,
+        failed: recipients.length - created.count,
+      },
     };
   }
 
   getSentNotifications() {
-    return this.prisma.notification.findMany({ where: { sentBy: { not: null } }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.notification.findMany({
+      where: { sentBy: { not: null } },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   getNotificationById(id: string) {
@@ -417,7 +467,7 @@ export class AdminService {
         approvedAt: action === 'approve' ? new Date() : null,
         approvedBy: action === 'approve' ? adminId : null,
         adminNotes: adminNotes ?? undefined,
-      },
+      } as Prisma.ReviewUpdateInput,
     });
 
     if (action === 'approve') {

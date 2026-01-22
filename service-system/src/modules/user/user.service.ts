@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from 'generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateProfileDto } from './dto/update-profile.dto';
-import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { ApplyBusinessDto } from './dto/apply-business.dto';
 import { CancelApplicationDto } from './dto/cancel-application.dto';
-import { RequestAccessDto } from './dto/request-access.dto';
 import { UpdatePointsDto } from './dto/points.dto';
+import { RequestAccessDto } from './dto/request-access.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Injectable()
 export class UserService {
@@ -28,7 +29,7 @@ export class UserService {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
-        preferences: dto.preferences ?? undefined,
+        preferences: (dto.preferences ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
   }
@@ -91,8 +92,7 @@ export class UserService {
 
     return {
       success: true,
-      message:
-        "Premium application submitted successfully! Your application is under review.",
+      message: 'Premium application submitted successfully! Your application is under review.',
       userProfile: updated,
     };
   }

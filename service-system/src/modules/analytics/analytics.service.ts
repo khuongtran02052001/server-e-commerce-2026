@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from 'generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -9,7 +10,7 @@ export class AnalyticsService {
     return this.prisma.analyticsEvent.create({
       data: {
         eventName,
-        eventParams: eventParams ?? undefined,
+        eventParams: (eventParams ?? undefined) as Prisma.InputJsonValue | undefined,
         userId,
       },
     });
