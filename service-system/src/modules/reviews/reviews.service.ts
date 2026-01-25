@@ -8,7 +8,6 @@ export class ReviewsService {
   constructor(private readonly reviewsRepo: ReviewsRepository) {}
 
   async getReviews(productId: string) {
-    console.log('reviews.getReviews productId:', productId);
     const reviews = await this.reviewsRepo.findApprovedByProductId(productId);
     if (!reviews.length) {
       return {
@@ -96,6 +95,22 @@ export class ReviewsService {
       success: true,
       message: 'Review marked as helpful',
       helpful,
+    };
+  }
+
+  async canUserReviewProduct(productId: string, userId: string) {
+    const [existingReview, deliveredOrder] = await Promise.all([
+      this.reviewsRepo.findByUserProduct(productId, userId),
+      this.reviewsRepo.hasDeliveredOrder(userId, productId),
+    ]);
+
+    const hasAlreadyReviewed = Boolean(existingReview);
+    const hasPurchased = Boolean(deliveredOrder);
+
+    return {
+      canReview: !hasAlreadyReviewed,
+      hasAlreadyReviewed,
+      hasPurchased,
     };
   }
 }

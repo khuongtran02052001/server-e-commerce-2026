@@ -22,7 +22,6 @@ export class AuthService {
       idToken: body.googleIdToken,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-
     const payload = ticket.getPayload();
     const email = payload?.email;
 
