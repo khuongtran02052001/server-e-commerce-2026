@@ -24,13 +24,20 @@ export class AuthService {
     });
     const payload = ticket.getPayload();
     const email = payload?.email;
+    const firstName = payload?.given_name || '';
+    const lastName = payload?.family_name || '';
 
     if (!email) throw new UnauthorizedException('Invalid Google token');
 
     let user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
       user = await this.prisma.user.create({
-        data: { email },
+        data: {
+          email,
+          firstName,
+          lastName,
+          profileImage: payload?.picture || null,
+        },
       });
     }
 
