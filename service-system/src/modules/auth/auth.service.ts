@@ -55,40 +55,6 @@ export class AuthService {
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
-        dateOfBirth: true,
-        profileImage: true,
-        walletBalance: true,
-        isAdmin: true,
-        isEmployee: true,
-        employeeRole: true,
-        createdAt: true,
-        updatedAt: true,
-        deletedAt: true,
-        // relations (limit large lists)
-        addresses: {
-          where: { deletedAt: null },
-        },
-        orders: {
-          orderBy: { createdAt: 'desc' },
-          take: 50,
-        },
-        notifications: {
-          orderBy: { createdAt: 'desc' },
-          take: 50,
-        },
-        wishlist: {
-          select: { id: true, name: true, price: true, slug: true },
-        },
-        cart: {
-          select: { id: true, productId: true, quantity: true },
-        },
-      },
     });
 
     if (!user) {
