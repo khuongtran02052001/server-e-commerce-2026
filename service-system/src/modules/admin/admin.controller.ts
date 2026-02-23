@@ -1,5 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { PaginateOptionsDTO } from 'src/common/dto/paginate-options.dto';
 import { CurrentUser } from 'src/common/utils/current-user.util';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminService } from './admin.service';
@@ -11,9 +22,9 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('account-requests')
-  getAccountRequests(@CurrentUser() user) {
+  getAccountRequests(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.getAccountRequests();
+    return this.adminService.getAccountRequests(pagination);
   }
 
   @Get('account-requests-summary')
@@ -32,21 +43,27 @@ export class AdminController {
   }
 
   @Post('reject-account')
-  rejectAccount(@Body() body: { userId: string; type: 'premium' | 'business'; reason: string }, @CurrentUser() user) {
+  rejectAccount(
+    @Body() body: { userId: string; type: 'premium' | 'business'; reason: string },
+    @CurrentUser() user,
+  ) {
     this.adminService.ensureAdmin(user);
     return this.adminService.rejectAccount(body.userId, body.type, body.reason);
   }
 
   @Post('cancel-account')
-  cancelAccount(@Body() body: { accountId: string; type: 'premium' | 'business'; reason: string }, @CurrentUser() user) {
+  cancelAccount(
+    @Body() body: { accountId: string; type: 'premium' | 'business'; reason: string },
+    @CurrentUser() user,
+  ) {
     this.adminService.ensureAdmin(user);
     return this.adminService.cancelAccount(body.accountId, body.type, body.reason);
   }
 
   @Get('business-accounts')
-  listBusinessAccounts(@CurrentUser() user) {
+  listBusinessAccounts(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.listBusinessAccounts();
+    return this.adminService.listBusinessAccounts(pagination);
   }
 
   @Post('business-accounts/approve')
@@ -55,13 +72,18 @@ export class AdminController {
     @CurrentUser() user,
   ) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.updateBusinessAccount(body.accountId, body.approve, body.adminEmail, body.reason);
+    return this.adminService.updateBusinessAccount(
+      body.accountId,
+      body.approve,
+      body.adminEmail,
+      body.reason,
+    );
   }
 
   @Get('premium-accounts')
-  listPremiumAccounts(@CurrentUser() user) {
+  listPremiumAccounts(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.listPremiumAccounts();
+    return this.adminService.listPremiumAccounts(pagination);
   }
 
   @Post('premium-accounts/approve')
@@ -70,13 +92,22 @@ export class AdminController {
     @CurrentUser() user,
   ) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.updatePremiumAccount(body.accountId, body.approve, body.adminEmail, body.reason);
+    return this.adminService.updatePremiumAccount(
+      body.accountId,
+      body.approve,
+      body.adminEmail,
+      body.reason,
+    );
   }
 
   @Get('users')
-  listUsers(@Query('limit') limit = '10', @Query('offset') offset = '0', @Query('query') query = '', @CurrentUser() user) {
+  listUsers(
+    @Query() pagination: PaginateOptionsDTO,
+    @Query('query') query = '',
+    @CurrentUser() user,
+  ) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.listUsers(Number(limit), Number(offset), query || undefined);
+    return this.adminService.listUsers(pagination, query || undefined);
   }
 
   @Delete('users')
@@ -86,13 +117,21 @@ export class AdminController {
   }
 
   @Get('users/combined')
-  listUsersCombined(@Query('limit') limit = '20', @Query('offset') offset = '0', @Query('query') query = '', @CurrentUser() user) {
+  listUsersCombined(
+    @Query() pagination: PaginateOptionsDTO,
+    @Query('query') query = '',
+    @CurrentUser() user,
+  ) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.listUsers(Number(limit), Number(offset), query || undefined);
+    return this.adminService.listUsers(pagination, query || undefined);
   }
 
   @Post('users/:userId/activate')
-  activateUser(@Param('userId') userId: string, @Body() body: { action: 'activate' | 'deactivate' }, @CurrentUser() user) {
+  activateUser(
+    @Param('userId') userId: string,
+    @Body() body: { action: 'activate' | 'deactivate' },
+    @CurrentUser() user,
+  ) {
     this.adminService.ensureAdmin(user);
     return this.adminService.updateUserActivation(userId, body.action, user.email || user.id);
   }
@@ -122,15 +161,15 @@ export class AdminController {
   }
 
   @Get('products')
-  getProducts(@CurrentUser() user) {
+  getProducts(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.getProducts();
+    return this.adminService.getProducts(pagination);
   }
 
   @Get('orders')
-  getOrders(@CurrentUser() user) {
+  getOrders(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.getOrders();
+    return this.adminService.getOrders(pagination);
   }
 
   @Get('orders/:id')
@@ -140,9 +179,9 @@ export class AdminController {
   }
 
   @Get('notifications')
-  getNotifications(@CurrentUser() user) {
+  getNotifications(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.getSentNotifications();
+    return this.adminService.getSentNotifications(pagination);
   }
 
   @Post('notifications/send')
@@ -164,9 +203,9 @@ export class AdminController {
   }
 
   @Get('notifications/sent')
-  getSentNotifications(@CurrentUser() user) {
+  getSentNotifications(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.getSentNotifications();
+    return this.adminService.getSentNotifications(pagination);
   }
 
   @Get('notifications/:id')
@@ -176,9 +215,9 @@ export class AdminController {
   }
 
   @Get('subscriptions')
-  getSubscriptions(@CurrentUser() user) {
+  getSubscriptions(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.getSubscriptions();
+    return this.adminService.getSubscriptions(pagination);
   }
 
   @Get('subscriptions/:id')
@@ -194,10 +233,16 @@ export class AdminController {
   }
 
   @Get('reviews')
-  getReviews(@Query('status') status = 'pending', @CurrentUser() user) {
+  getReviews(
+    @Query() pagination: PaginateOptionsDTO,
+    @Query('status') status = 'pending',
+    @CurrentUser() user,
+  ) {
     this.adminService.ensureAdmin(user);
-    const normalized = ['pending', 'approved', 'rejected'].includes(status) ? (status as any) : 'pending';
-    return this.adminService.getReviewsByStatus(normalized);
+    const normalized = ['pending', 'approved', 'rejected'].includes(status)
+      ? (status as any)
+      : 'pending';
+    return this.adminService.getReviewsByStatus(normalized, pagination);
   }
 
   @Patch('reviews')
@@ -206,7 +251,12 @@ export class AdminController {
     @CurrentUser() user,
   ) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.updateReviewStatus(body.reviewId, body.action, user.id, body.adminNotes);
+    return this.adminService.updateReviewStatus(
+      body.reviewId,
+      body.action,
+      user.id,
+      body.adminNotes,
+    );
   }
 
   @Post('manage-user')
@@ -215,6 +265,10 @@ export class AdminController {
     if (!body.email) {
       return { success: false, message: 'Email is required' };
     }
-    return this.adminService.manageUserByEmail(body.email, Boolean(body.setPremium), user.email || user.id);
+    return this.adminService.manageUserByEmail(
+      body.email,
+      Boolean(body.setPremium),
+      user.email || user.id,
+    );
   }
 }

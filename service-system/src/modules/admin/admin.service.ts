@@ -5,11 +5,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from 'generated/prisma';
-import { PrismaService } from '../prisma/prisma.service';
+import { PaginateOptionsDTO } from 'src/common/dto/paginate-options.dto';
+import { AdminRepository } from './admin.repository';
+
+type PaginationMeta = {
+  page: number;
+  perPage: number;
+  totalCount: number;
+  hasNextPage: boolean;
+};
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly adminRepository: AdminRepository) {}
 
   ensureAdmin(user: { isAdmin?: boolean }) {
     if (!user?.isAdmin) {
@@ -17,34 +25,38 @@ export class AdminService {
     }
   }
 
-  async getAccountRequests() {
+  private normalizePagination(pagination?: PaginateOptionsDTO) {
+    const page = Math.max(1, pagination?.page || 1);
+    const perPage = Math.max(1, pagination?.perPage || 10);
+    return { page, perPage, skip: (page - 1) * perPage, take: perPage };
+  }
+
+  private buildMeta(page: number, perPage: number, totalCount: number): PaginationMeta {
+    return {
+      page,
+      perPage,
+      totalCount,
+      hasNextPage: page * perPage < totalCount,
+    };
+  }
+
+  async getAccountRequests(pagination?: PaginateOptionsDTO) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
     const [
       premiumRequests,
       businessRequests,
       approvedPremiumAccounts,
       approvedBusinessAccounts,
       allUsers,
-    ] = await Promise.all([
-      this.prisma.user.findMany({
-        where: { premiumStatus: 'pending' },
-        orderBy: { premiumAppliedAt: 'desc' },
-      }),
-      this.prisma.user.findMany({
-        where: { businessStatus: 'pending' },
-        orderBy: { businessAppliedAt: 'desc' },
-      }),
-      this.prisma.user.findMany({
-        where: { premiumStatus: 'active' },
-        orderBy: { premiumApprovedAt: 'desc' },
-      }),
-      this.prisma.user.findMany({
-        where: { businessStatus: 'active' },
-        orderBy: { businessApprovedAt: 'desc' },
-      }),
-      this.prisma.user.findMany({
-        where: { OR: [{ premiumStatus: { not: 'none' } }, { businessStatus: { not: 'none' } }] },
-      }),
-    ]);
+    ] = await this.adminRepository.listAccountRequests({ skip, take });
+
+    const [
+      premiumRequestsCount,
+      businessRequestsCount,
+      approvedPremiumCount,
+      approvedBusinessCount,
+      allUsersCount,
+    ] = await this.adminRepository.countAccountRequests();
 
     return {
       success: true,
@@ -53,25 +65,30 @@ export class AdminService {
       approvedPremiumAccounts,
       approvedBusinessAccounts,
       allUsers,
+      meta: {
+        premiumRequests: this.buildMeta(page, perPage, premiumRequestsCount),
+        businessRequests: this.buildMeta(page, perPage, businessRequestsCount),
+        approvedPremiumAccounts: this.buildMeta(page, perPage, approvedPremiumCount),
+        approvedBusinessAccounts: this.buildMeta(page, perPage, approvedBusinessCount),
+        allUsers: this.buildMeta(page, perPage, allUsersCount),
+      },
     };
   }
 
   async getAccountRequestsSummary() {
     const [pendingPremiumCount, pendingBusinessCount] = await Promise.all([
-      this.prisma.user.count({ where: { premiumStatus: 'pending' } }),
-      this.prisma.user.count({ where: { businessStatus: 'pending' } }),
+      this.adminRepository.countUsers({ premiumStatus: 'pending' }),
+      this.adminRepository.countUsers({ businessStatus: 'pending' }),
     ]);
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const recentRequests = await this.prisma.user.count({
-      where: {
-        OR: [
-          { premiumStatus: 'pending', premiumAppliedAt: { gt: sevenDaysAgo } },
-          { businessStatus: 'pending', businessAppliedAt: { gt: sevenDaysAgo } },
-        ],
-      },
+    const recentRequests = await this.adminRepository.countUsers({
+      OR: [
+        { premiumStatus: 'pending', premiumAppliedAt: { gt: sevenDaysAgo } },
+        { businessStatus: 'pending', businessAppliedAt: { gt: sevenDaysAgo } },
+      ],
     });
 
     return {
@@ -84,7 +101,7 @@ export class AdminService {
   }
 
   async approveAccount(userId: string, type: 'premium' | 'business', adminId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.adminRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
     if (type === 'business' && user.premiumStatus !== 'active') {
@@ -95,31 +112,25 @@ export class AdminService {
       if (user.premiumStatus !== 'pending') {
         throw new BadRequestException('Premium account is not in pending status');
       }
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          premiumStatus: 'active',
-          isActive: true,
-          membershipType: 'premium',
-          premiumApprovedAt: new Date(),
-          premiumApprovedBy: adminId,
-          rejectionReason: null,
-        },
+      await this.adminRepository.updateUser(userId, {
+        premiumStatus: 'active',
+        isActive: true,
+        membershipType: 'premium',
+        premiumApprovedAt: new Date(),
+        premiumApprovedBy: adminId,
+        rejectionReason: null,
       });
     } else {
       if (user.businessStatus !== 'pending') {
         throw new BadRequestException('Business account is not in pending status');
       }
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          businessStatus: 'active',
-          isBusiness: true,
-          membershipType: 'business',
-          businessApprovedAt: new Date(),
-          businessApprovedBy: adminId,
-          rejectionReason: null,
-        },
+      await this.adminRepository.updateUser(userId, {
+        businessStatus: 'active',
+        isBusiness: true,
+        membershipType: 'business',
+        businessApprovedAt: new Date(),
+        businessApprovedBy: adminId,
+        rejectionReason: null,
       });
     }
 
@@ -127,32 +138,26 @@ export class AdminService {
   }
 
   async rejectAccount(userId: string, type: 'premium' | 'business', reason: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.adminRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
     if (type === 'premium') {
       if (user.premiumStatus !== 'pending') {
         throw new BadRequestException('Premium account is not in pending status');
       }
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          premiumStatus: 'rejected',
-          premiumRejectedAt: new Date(),
-          rejectionReason: reason,
-        },
+      await this.adminRepository.updateUser(userId, {
+        premiumStatus: 'rejected',
+        premiumRejectedAt: new Date(),
+        rejectionReason: reason,
       });
     } else {
       if (user.businessStatus !== 'pending') {
         throw new BadRequestException('Business account is not in pending status');
       }
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          businessStatus: 'rejected',
-          businessRejectedAt: new Date(),
-          rejectionReason: reason,
-        },
+      await this.adminRepository.updateUser(userId, {
+        businessStatus: 'rejected',
+        businessRejectedAt: new Date(),
+        rejectionReason: reason,
       });
     }
 
@@ -160,46 +165,46 @@ export class AdminService {
   }
 
   async cancelAccount(accountId: string, type: 'premium' | 'business', reason: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: accountId } });
+    const user = await this.adminRepository.findUserById(accountId);
     if (!user) throw new NotFoundException('User not found');
 
     if (type === 'premium') {
       if (user.premiumStatus !== 'active') {
         throw new BadRequestException('Premium account is not active');
       }
-      return this.prisma.user.update({
-        where: { id: accountId },
-        data: {
-          premiumStatus: 'cancelled',
-          rejectionReason: reason,
-        },
+      return this.adminRepository.updateUser(accountId, {
+        premiumStatus: 'cancelled',
+        rejectionReason: reason,
       });
     }
 
     if (user.businessStatus !== 'active') {
       throw new BadRequestException('Business account is not active');
     }
-    return this.prisma.user.update({
-      where: { id: accountId },
-      data: {
-        businessStatus: 'cancelled',
-        rejectionReason: reason,
-      },
+    return this.adminRepository.updateUser(accountId, {
+      businessStatus: 'cancelled',
+      rejectionReason: reason,
     });
   }
 
-  listBusinessAccounts() {
-    return this.prisma.user.findMany({
-      where: { businessStatus: { in: ['pending', 'active', 'rejected'] } },
-      orderBy: { businessAppliedAt: 'desc' },
-    });
+  async listBusinessAccounts(pagination?: PaginateOptionsDTO) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+    const [accounts, totalCount] = await Promise.all([
+      this.adminRepository.listBusinessAccounts({ skip, take }),
+      this.adminRepository.countBusinessAccounts(),
+    ]);
+
+    return { data: accounts, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
-  listPremiumAccounts() {
-    return this.prisma.user.findMany({
-      where: { premiumStatus: { in: ['pending', 'active', 'rejected'] } },
-      orderBy: { premiumAppliedAt: 'desc' },
-    });
+  async listPremiumAccounts(pagination?: PaginateOptionsDTO) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+    const [accounts, totalCount] = await Promise.all([
+      this.adminRepository.listPremiumAccounts({ skip, take }),
+      this.adminRepository.countPremiumAccounts(),
+    ]);
+
+    return { data: accounts, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
   async updateBusinessAccount(
@@ -208,9 +213,8 @@ export class AdminService {
     adminEmail: string,
     reason?: string,
   ) {
-    return this.prisma.user.update({
-      where: { id: accountId },
-      data: approve
+    return this.adminRepository.updateUser(accountId, {
+      ...(approve
         ? {
             isBusiness: true,
             businessStatus: 'active',
@@ -225,7 +229,7 @@ export class AdminService {
             businessApprovedBy: adminEmail,
             businessApprovedAt: new Date(),
             rejectionReason: reason || 'No reason provided',
-          },
+          }),
     });
   }
 
@@ -235,9 +239,8 @@ export class AdminService {
     adminEmail: string,
     reason?: string,
   ) {
-    return this.prisma.user.update({
-      where: { id: accountId },
-      data: approve
+    return this.adminRepository.updateUser(accountId, {
+      ...(approve
         ? {
             isActive: true,
             premiumStatus: 'active',
@@ -253,11 +256,12 @@ export class AdminService {
             premiumApprovedBy: adminEmail,
             premiumApprovedAt: new Date(),
             rejectionReason: reason || 'No reason provided',
-          },
+          }),
     });
   }
 
-  async listUsers(limit: number, offset: number, query?: string) {
+  async listUsers(pagination?: PaginateOptionsDTO, query?: string) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
     const where = query
       ? {
           OR: [
@@ -269,20 +273,11 @@ export class AdminService {
       : undefined;
 
     const [users, totalCount] = await Promise.all([
-      this.prisma.user.findMany({
-        where,
-        take: limit,
-        skip: offset,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.user.count({ where }),
+      this.adminRepository.findUsers(where, { skip, take }),
+      this.adminRepository.countUsers(where),
     ]);
 
-    return {
-      users,
-      totalCount,
-      hasNextPage: offset + limit < totalCount,
-    };
+    return { data: users, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
   async deleteUsers(userIds: string[], currentUserId: string) {
@@ -290,9 +285,7 @@ export class AdminService {
       throw new BadRequestException('Cannot delete your own admin account');
     }
 
-    const result = await this.prisma.user.deleteMany({
-      where: { id: { in: userIds } },
-    });
+    const result = await this.adminRepository.deleteUsers(userIds);
 
     return {
       success: true,
@@ -301,55 +294,60 @@ export class AdminService {
   }
 
   updateUserActivation(userId: string, action: 'activate' | 'deactivate', adminEmail: string) {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data:
-        action === 'activate'
-          ? { isActive: true, premiumStatus: 'active', premiumApprovedBy: adminEmail }
-          : { isActive: false },
+    return this.adminRepository.updateUser(userId, {
+      ...(action === 'activate'
+        ? { isActive: true, premiumStatus: 'active', premiumApprovedBy: adminEmail }
+        : { isActive: false }),
     });
   }
 
   async manageUserByEmail(email: string, setPremium: boolean, adminEmail: string) {
-    const existing = await this.prisma.user.findUnique({ where: { email } });
+    const existing = await this.adminRepository.findUserByEmail(email);
     if (existing) {
-      return this.prisma.user.update({
-        where: { email },
-        data: {
-          isActive: setPremium || existing.isActive,
-          premiumStatus: setPremium ? 'active' : existing.premiumStatus,
-          membershipType: setPremium ? 'premium' : existing.membershipType,
-          premiumApprovedBy: adminEmail,
-          premiumApprovedAt: setPremium ? new Date() : existing.premiumApprovedAt,
-        },
+      return this.adminRepository.updateUser(existing.id, {
+        isActive: setPremium || existing.isActive,
+        premiumStatus: setPremium ? 'active' : existing.premiumStatus,
+        membershipType: setPremium ? 'premium' : existing.membershipType,
+        premiumApprovedBy: adminEmail,
+        premiumApprovedAt: setPremium ? new Date() : existing.premiumApprovedAt,
       });
     }
 
-    return this.prisma.user.create({
-      data: {
-        email,
-        isActive: setPremium || true,
-        isBusiness: false,
-        membershipType: setPremium ? 'premium' : 'standard',
-        premiumStatus: setPremium ? 'active' : 'none',
-        premiumApprovedBy: adminEmail,
-        premiumApprovedAt: setPremium ? new Date() : null,
-        rewardPoints: 0,
-        loyaltyPoints: setPremium ? 100 : 0,
-      },
+    return this.adminRepository.createUser({
+      email,
+      isActive: setPremium || true,
+      isBusiness: false,
+      membershipType: setPremium ? 'premium' : 'standard',
+      premiumStatus: setPremium ? 'active' : 'none',
+      premiumApprovedBy: adminEmail,
+      premiumApprovedAt: setPremium ? new Date() : null,
+      rewardPoints: 0,
+      loyaltyPoints: setPremium ? 100 : 0,
     });
   }
 
-  getOrders() {
-    return this.prisma.order.findMany({ orderBy: { createdAt: 'desc' } });
+  async getOrders(pagination?: PaginateOptionsDTO) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+    const [orders, totalCount] = await Promise.all([
+      this.adminRepository.listOrders({ skip, take }),
+      this.adminRepository.countOrders(),
+    ]);
+
+    return { data: orders, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
   getOrderById(id: string) {
-    return this.prisma.order.findUnique({ where: { id } });
+    return this.adminRepository.getOrderById(id);
   }
 
-  getProducts() {
-    return this.prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
+  async getProducts(pagination?: PaginateOptionsDTO) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+    const [products, totalCount] = await Promise.all([
+      this.adminRepository.listProducts({ skip, take }),
+      this.adminRepository.countProducts(),
+    ]);
+
+    return { data: products, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
   async sendNotifications(
@@ -363,17 +361,7 @@ export class AdminService {
       sentBy?: string;
     },
   ) {
-    const created = await this.prisma.notification.createMany({
-      data: recipients.map((userId) => ({
-        userId,
-        title: payload.title,
-        message: payload.message,
-        type: payload.type as any,
-        priority: payload.priority as any,
-        actionUrl: payload.actionUrl,
-        sentBy: payload.sentBy,
-      })),
-    });
+    const created = await this.adminRepository.createNotifications(recipients, payload);
 
     return {
       success: true,
@@ -386,22 +374,25 @@ export class AdminService {
     };
   }
 
-  getSentNotifications() {
-    return this.prisma.notification.findMany({
-      where: { sentBy: { not: null } },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getSentNotifications(pagination?: PaginateOptionsDTO) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+    const [notifications, totalCount] = await Promise.all([
+      this.adminRepository.listSentNotifications({ skip, take }),
+      this.adminRepository.countSentNotifications(),
+    ]);
+
+    return { data: notifications, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
   getNotificationById(id: string) {
-    return this.prisma.notification.findUnique({ where: { id } });
+    return this.adminRepository.getNotificationById(id);
   }
 
   getStats() {
     return Promise.all([
-      this.prisma.user.count(),
-      this.prisma.order.count(),
-      this.prisma.product.count(),
+      this.adminRepository.countUsers(undefined),
+      this.adminRepository.countOrders(),
+      this.adminRepository.countProducts(),
     ]).then(([users, orders, products]) => ({
       users,
       orders,
@@ -413,38 +404,31 @@ export class AdminService {
     return this.getStats();
   }
 
-  getSubscriptions() {
-    return this.prisma.newsletterSubscription.findMany({ orderBy: { createdAt: 'desc' } });
+  async getSubscriptions(pagination?: PaginateOptionsDTO) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+    const [subscriptions, totalCount] = await Promise.all([
+      this.adminRepository.listSubscriptions({ skip, take }),
+      this.adminRepository.countSubscriptions(),
+    ]);
+
+    return { data: subscriptions, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
   getSubscriptionById(id: string) {
-    return this.prisma.newsletterSubscription.findUnique({ where: { id } });
+    return this.adminRepository.getSubscriptionById(id);
   }
 
-  getReviewsByStatus(status: 'pending' | 'approved' | 'rejected') {
-    return this.prisma.review.findMany({
-      where: { status },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            images: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            profileImage: true,
-          },
-        },
-      },
-    });
+  async getReviewsByStatus(
+    status: 'pending' | 'approved' | 'rejected',
+    pagination?: PaginateOptionsDTO,
+  ) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+    const [reviews, totalCount] = await Promise.all([
+      this.adminRepository.listReviewsByStatus(status, { skip, take }),
+      this.adminRepository.countReviewsByStatus(status),
+    ]);
+
+    return { data: reviews, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
   async updateReviewStatus(
@@ -453,22 +437,16 @@ export class AdminService {
     adminId: string,
     adminNotes?: string,
   ) {
-    const review = await this.prisma.review.findUnique({
-      where: { id: reviewId },
-      select: { id: true, productId: true },
-    });
+    const review = await this.adminRepository.findReviewById(reviewId);
     if (!review) throw new NotFoundException('Review not found');
 
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
-    await this.prisma.review.update({
-      where: { id: reviewId },
-      data: {
-        status: newStatus,
-        approvedAt: action === 'approve' ? new Date() : null,
-        approvedBy: action === 'approve' ? adminId : null,
-        adminNotes: adminNotes ?? undefined,
-      } as Prisma.ReviewUpdateInput,
-    });
+    await this.adminRepository.updateReview(reviewId, {
+      status: newStatus,
+      approvedAt: action === 'approve' ? new Date() : null,
+      approvedBy: action === 'approve' ? adminId : null,
+      adminNotes: adminNotes ?? undefined,
+    } as Prisma.ReviewUpdateInput);
 
     if (action === 'approve') {
       await this.recalculateProductRating(review.productId);
@@ -478,10 +456,7 @@ export class AdminService {
   }
 
   private async recalculateProductRating(productId: string) {
-    const approvedReviews = await this.prisma.review.findMany({
-      where: { productId, status: 'approved' },
-      select: { rating: true },
-    });
+    const approvedReviews = await this.adminRepository.listApprovedReviewsByProduct(productId);
 
     const totalReviews = approvedReviews.length;
     const totalRating = approvedReviews.reduce((sum, r) => sum + r.rating, 0);
@@ -495,26 +470,16 @@ export class AdminService {
       oneStar: approvedReviews.filter((r) => r.rating === 1).length,
     };
 
-    await this.prisma.product.update({
-      where: { id: productId },
-      data: {
-        averageRating: Number(averageRating.toFixed(1)),
-        totalReviews,
-      },
+    await this.adminRepository.updateProduct(productId, {
+      averageRating: Number(averageRating.toFixed(1)),
+      totalReviews,
     });
 
-    const existing = await this.prisma.ratingDistribution.findFirst({
-      where: { productId },
-    });
+    const existing = await this.adminRepository.findRatingDistribution(productId);
     if (existing) {
-      await this.prisma.ratingDistribution.update({
-        where: { id: existing.id },
-        data: ratingDistribution,
-      });
+      await this.adminRepository.updateRatingDistribution(existing.id, ratingDistribution);
     } else {
-      await this.prisma.ratingDistribution.create({
-        data: { productId, ...ratingDistribution },
-      });
+      await this.adminRepository.createRatingDistribution({ productId, ...ratingDistribution });
     }
   }
 }

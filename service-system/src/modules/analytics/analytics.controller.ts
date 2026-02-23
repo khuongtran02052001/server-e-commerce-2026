@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { TrackEventDto } from './dto/track.dto';
 import { AnalyticsService } from './analytics.service';
+import { TrackEventDto } from './dto/track.dto';
 
 @ApiTags('Analytics')
 @Controller('analytics')
