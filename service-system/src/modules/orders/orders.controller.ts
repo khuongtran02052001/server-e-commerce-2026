@@ -40,31 +40,6 @@ export class OrdersController {
     return this.addressesService.getAddressesByUser(user.id);
   }
 
-  @Post('refund')
-  refund(@Body() body: any) {
-    return { success: true, message: 'Refund requested (mock)', payload: body };
-  }
-
-  @Post('send-email')
-  sendEmail(@Body() body: any) {
-    return { success: true, message: 'Order email queued (mock)', payload: body };
-  }
-
-  @Post(':orderId/pay')
-  pay(@Param('orderId') orderId: string, @Body() body: any) {
-    return { success: true, message: 'Payment initiated (mock)', orderId, payload: body };
-  }
-
-  @Post(':orderId/pay-now')
-  payNow(@Param('orderId') orderId: string, @Body() body: any) {
-    return { success: true, message: 'Payment completed (mock)', orderId, payload: body };
-  }
-
-  @Get(':orderId/generate-invoice')
-  generateInvoice(@Param('orderId') orderId: string) {
-    return { success: true, message: 'Invoice generated (mock)', orderId };
-  }
-
   @Patch(':id/action')
   handleMyOrderAction(
     @Param('id') id: string,

@@ -93,7 +93,14 @@ export class OrdersService {
     }
 
     if (dto.action === 'cancel') {
-      const cancellable = ['pending', 'processing'];
+      const cancellable = [
+        'pending',
+        'address_confirmed',
+        'order_confirmed',
+        'packed',
+        'ready_for_delivery',
+        'rescheduled',
+      ];
       if (!cancellable.includes(order.status)) {
         throw new BadRequestException('Order cannot be cancelled at this stage');
       }
@@ -102,12 +109,12 @@ export class OrdersService {
       return { success: true, message: 'Order cancelled', order: cancelled };
     }
 
-    const receivable = ['shipped'];
+    const receivable = ['out_for_delivery', 'delivered'];
     if (!receivable.includes(order.status)) {
       throw new BadRequestException('Order cannot be confirmed as received');
     }
 
-    const delivered = await this.repo.updateById(orderId, { status: 'delivered' });
-    return { success: true, message: 'Order marked as delivered', order: delivered };
+    const completed = await this.repo.updateById(orderId, { status: 'completed' });
+    return { success: true, message: 'Order marked as completed', order: completed };
   }
 }
