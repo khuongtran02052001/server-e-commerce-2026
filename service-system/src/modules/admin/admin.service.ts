@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from 'generated/prisma';
 import { PaginateOptionsDTO } from 'src/common/dto/paginate-options.dto';
+import { AdminUpdateOrderDto } from '../orders/dto/admin-update-order.dto';
 import { AdminRepository } from './admin.repository';
 
 type PaginationMeta = {
@@ -338,6 +339,22 @@ export class AdminService {
 
   getOrderById(id: string) {
     return this.adminRepository.getOrderById(id);
+  }
+
+  async updateOrder(id: string, dto: AdminUpdateOrderDto) {
+    const order = await this.adminRepository.getOrderById(id);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (!dto.status && !dto.paymentStatus) {
+      throw new BadRequestException('status or paymentStatus is required');
+    }
+
+    return this.adminRepository.updateOrderById(id, {
+      ...(dto.status ? { status: dto.status } : {}),
+      ...(dto.paymentStatus ? { paymentStatus: dto.paymentStatus } : {}),
+    });
   }
 
   async getProducts(pagination?: PaginateOptionsDTO) {

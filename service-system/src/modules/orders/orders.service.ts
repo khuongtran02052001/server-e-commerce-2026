@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import crypto from 'crypto';
+import { AdminUpdateOrderDto } from './dto/admin-update-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { UserOrderActionDto } from './dto/user-order-action.dto';
 import { OrdersRepository } from './orders.repository';
 
 @Injectable()
@@ -66,5 +68,46 @@ export class OrdersService {
   async getOrdersCount(userId: string) {
     const totalOrders = await this.repo.countByUserId(userId);
     return { success: true, totalOrders };
+  }
+
+  async updateOrderByAdmin(orderId: string, dto: AdminUpdateOrderDto) {
+    const order = await this.repo.findById(orderId);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (!dto.status && !dto.paymentStatus) {
+      throw new BadRequestException('status or paymentStatus is required');
+    }
+
+    return this.repo.updateById(orderId, {
+      ...(dto.status ? { status: dto.status } : {}),
+      ...(dto.paymentStatus ? { paymentStatus: dto.paymentStatus } : {}),
+    });
+  }
+
+  async handleMyOrderAction(orderId: string, userId: string, dto: UserOrderActionDto) {
+    const order = await this.repo.findById(orderId);
+    if (!order || order.userId !== userId) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (dto.action === 'cancel') {
+      const cancellable = ['pending', 'processing'];
+      if (!cancellable.includes(order.status)) {
+        throw new BadRequestException('Order cannot be cancelled at this stage');
+      }
+
+      const cancelled = await this.repo.updateById(orderId, { status: 'cancelled' });
+      return { success: true, message: 'Order cancelled', order: cancelled };
+    }
+
+    const receivable = ['shipped'];
+    if (!receivable.includes(order.status)) {
+      throw new BadRequestException('Order cannot be confirmed as received');
+    }
+
+    const delivered = await this.repo.updateById(orderId, { status: 'delivered' });
+    return { success: true, message: 'Order marked as delivered', order: delivered };
   }
 }

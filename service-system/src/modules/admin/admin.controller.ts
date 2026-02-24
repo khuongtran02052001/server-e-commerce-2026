@@ -13,6 +13,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { PaginateOptionsDTO } from 'src/common/dto/paginate-options.dto';
 import { CurrentUser } from 'src/common/utils/current-user.util';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminUpdateOrderDto } from '../orders/dto/admin-update-order.dto';
 import { AdminService } from './admin.service';
 
 @ApiTags('Admin')
@@ -176,6 +177,12 @@ export class AdminController {
   getOrderById(@Param('id') id: string, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
     return this.adminService.getOrderById(id);
+  }
+
+  @Patch('orders/:id')
+  updateOrder(@Param('id') id: string, @Body() body: AdminUpdateOrderDto, @CurrentUser() user) {
+    this.adminService.ensureAdmin(user);
+    return this.adminService.updateOrder(id, body);
   }
 
   @Get('notifications')

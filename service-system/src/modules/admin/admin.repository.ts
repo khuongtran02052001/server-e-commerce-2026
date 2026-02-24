@@ -136,6 +136,13 @@ export class AdminRepository {
     return this.prisma.order.findUnique({ where: { id } });
   }
 
+  updateOrderById(id: string, data: Prisma.OrderUpdateInput) {
+    return this.prisma.order.update({
+      where: { id },
+      data,
+    });
+  }
+
   listProducts(pagination: Pagination) {
     return this.prisma.product.findMany({
       orderBy: { createdAt: 'desc' },

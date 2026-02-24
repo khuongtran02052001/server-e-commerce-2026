@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from 'src/common/utils/current-user.util';
 import { AddressesService } from '../addresses/addresses.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { UserOrderActionDto } from './dto/user-order-action.dto';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
@@ -62,5 +63,14 @@ export class OrdersController {
   @Get(':orderId/generate-invoice')
   generateInvoice(@Param('orderId') orderId: string) {
     return { success: true, message: 'Invoice generated (mock)', orderId };
+  }
+
+  @Patch(':id/action')
+  handleMyOrderAction(
+    @Param('id') id: string,
+    @Body() dto: UserOrderActionDto,
+    @CurrentUser() user,
+  ) {
+    return this.service.handleMyOrderAction(id, user.id, dto);
   }
 }

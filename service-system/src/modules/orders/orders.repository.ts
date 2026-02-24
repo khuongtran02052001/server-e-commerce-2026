@@ -30,6 +30,14 @@ export class OrdersRepository {
     });
   }
 
+  updateById(id: string, data: Prisma.OrderUpdateInput) {
+    return this.prisma.order.update({
+      where: { id },
+      data,
+      include: { products: true },
+    });
+  }
+
   countByUserId(userId: string) {
     return this.prisma.order.count({ where: { userId } });
   }
