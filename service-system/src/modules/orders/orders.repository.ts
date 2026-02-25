@@ -2,6 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from 'generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 
+const SelectOptions = {
+  id: true,
+  name: true,
+  price: true,
+  images: true,
+  slug: true,
+};
 @Injectable()
 export class OrdersRepository {
   constructor(private prisma: PrismaService) {}
@@ -13,11 +20,7 @@ export class OrdersRepository {
         products: {
           include: {
             product: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-              },
+              select: SelectOptions,
             },
           },
         },
@@ -32,11 +35,7 @@ export class OrdersRepository {
         products: {
           include: {
             product: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-              },
+              select: SelectOptions,
             },
           },
         },
@@ -52,11 +51,7 @@ export class OrdersRepository {
         products: {
           include: {
             product: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-              },
+              select: SelectOptions,
             },
           },
         },
@@ -72,11 +67,7 @@ export class OrdersRepository {
         products: {
           include: {
             product: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-              },
+              select: SelectOptions,
             },
           },
         },
@@ -87,5 +78,4 @@ export class OrdersRepository {
   countByUserId(userId: string) {
     return this.prisma.order.count({ where: { userId } });
   }
-
 }
