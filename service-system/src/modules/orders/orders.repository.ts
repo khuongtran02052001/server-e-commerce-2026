@@ -10,7 +10,17 @@ export class OrdersRepository {
     return this.prisma.order.create({
       data,
       include: {
-        products: true,
+        products: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
       },
     });
   }
@@ -18,7 +28,19 @@ export class OrdersRepository {
   findByUserId(userId: string) {
     return this.prisma.order.findMany({
       where: { userId },
-      include: { products: true },
+      include: {
+        products: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -26,7 +48,19 @@ export class OrdersRepository {
   findById(id: string) {
     return this.prisma.order.findUnique({
       where: { id },
-      include: { products: true },
+      include: {
+        products: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -34,11 +68,24 @@ export class OrdersRepository {
     return this.prisma.order.update({
       where: { id },
       data,
-      include: { products: true },
+      include: {
+        products: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
   countByUserId(userId: string) {
     return this.prisma.order.count({ where: { userId } });
   }
+
 }
