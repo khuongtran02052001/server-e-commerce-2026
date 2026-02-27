@@ -1,6 +1,8 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { NewsletterDto } from './dto/newsletter.dto';
+import { CheckSubscriptionDto } from './dto/check-subscription.dto';
+import { SubscribeNewsletterDto } from './dto/subscribe-newsletter.dto';
+import { UnsubscribeNewsletterDto } from './dto/unsubscribe-newsletter.dto';
 import { NewsletterService } from './newsletter.service';
 
 @ApiTags('Newsletter')
@@ -9,14 +11,17 @@ export class NewsletterController {
   constructor(private readonly newsletterService: NewsletterService) {}
 
   @Post('subscribe')
-  async subscribe(@Body() dto: NewsletterDto) {
-    await this.newsletterService.subscribe(dto.email);
-    return { success: true, message: 'Subscribed successfully' };
+  async subscribe(@Body() dto: SubscribeNewsletterDto) {
+    return this.newsletterService.subscribe(dto);
   }
 
   @Post('unsubscribe')
-  async unsubscribe(@Body() dto: NewsletterDto) {
-    await this.newsletterService.unsubscribe(dto.email);
-    return { success: true, message: 'Unsubscribed successfully' };
+  async unsubscribe(@Body() dto: UnsubscribeNewsletterDto) {
+    return this.newsletterService.unsubscribe(dto.email);
+  }
+
+  @Get('status')
+  async status(@Query() query: CheckSubscriptionDto) {
+    return this.newsletterService.checkStatus(query.email);
   }
 }

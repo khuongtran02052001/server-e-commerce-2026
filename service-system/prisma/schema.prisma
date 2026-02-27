@@ -174,7 +174,10 @@ model UserAccessRequest {
 model NewsletterSubscription {
   id             String   @id @default(uuid()) @db.Uuid
   email          String   @unique
-  status         String   @default("subscribed")
+  status         String   @default("active")
+  source         String?
+  ipAddress      String?
+  userAgent      String?
   subscribedAt   DateTime @default(now())
   unsubscribedAt DateTime?
   createdAt      DateTime @default(now())
