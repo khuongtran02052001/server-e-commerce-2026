@@ -164,6 +164,7 @@ export class AdminRepository {
       take: pagination.take,
       skip: pagination.skip,
       include: {
+        images: true,
         brand: {
           select: {
             name: true,
