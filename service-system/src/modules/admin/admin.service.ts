@@ -16,6 +16,8 @@ type PaginationMeta = {
   hasNextPage: boolean;
 };
 
+type AnalyticsPeriod = '7d' | '30d' | '90d' | '1y';
+
 @Injectable()
 export class AdminService {
   constructor(private readonly adminRepository: AdminRepository) {}
@@ -417,8 +419,166 @@ export class AdminService {
     }));
   }
 
-  getAnalytics() {
-    return this.getStats();
+  private parsePeriod(period?: string): AnalyticsPeriod {
+    if (period === '7d' || period === '30d' || period === '90d' || period === '1y') {
+      return period;
+    }
+    return '30d';
+  }
+
+  private getPeriodDays(period: AnalyticsPeriod) {
+    if (period === '7d') return 7;
+    if (period === '90d') return 90;
+    if (period === '1y') return 365;
+    return 30;
+  }
+
+  private percentageChange(current: number, previous: number) {
+    if (previous === 0) {
+      return current > 0 ? 100 : 0;
+    }
+    return Number((((current - previous) / previous) * 100).toFixed(2));
+  }
+
+  async getAnalytics(period?: string) {
+    const normalizedPeriod = this.parsePeriod(period);
+    const days = this.getPeriodDays(normalizedPeriod);
+
+    const now = new Date();
+    const currentStart = new Date(now);
+    currentStart.setDate(now.getDate() - days);
+
+    const previousStart = new Date(currentStart);
+    previousStart.setDate(currentStart.getDate() - days);
+
+    const [
+      revenueCurrentAgg,
+      revenuePreviousAgg,
+      currentOrderStatusGroups,
+      previousOrderStatusGroups,
+      totalCustomers,
+      newCustomersCurrent,
+      newCustomersPrevious,
+      activeCustomersCurrent,
+      totalProducts,
+      productsCurrent,
+      productsPrevious,
+      lowStock,
+      outOfStock,
+      topProductGroups,
+      recentOrders,
+    ] = await Promise.all([
+      this.adminRepository.aggregateOrders({
+        createdAt: { gte: currentStart, lt: now },
+        status: { in: ['delivered', 'completed'] },
+      }),
+      this.adminRepository.aggregateOrders({
+        createdAt: { gte: previousStart, lt: currentStart },
+        status: { in: ['delivered', 'completed'] },
+      }),
+      this.adminRepository.groupOrdersByStatusBetween(currentStart, now),
+      this.adminRepository.groupOrdersByStatusBetween(previousStart, currentStart),
+      this.adminRepository.countUsers(undefined),
+      this.adminRepository.countUsersCreatedBetween(currentStart, now),
+      this.adminRepository.countUsersCreatedBetween(previousStart, currentStart),
+      this.adminRepository.countUsersWithOrdersBetween(currentStart, now),
+      this.adminRepository.countProducts(),
+      this.adminRepository.countProductsWhere({ createdAt: { gte: currentStart, lt: now } }),
+      this.adminRepository.countProductsWhere({
+        createdAt: { gte: previousStart, lt: currentStart },
+      }),
+      this.adminRepository.countProductsWhere({
+        stock: { gt: 0, lte: 10 },
+      }),
+      this.adminRepository.countProductsWhere({ stock: { lte: 0 } }),
+      this.adminRepository.groupTopOrderItemsByPeriod(currentStart, now, 5),
+      this.adminRepository.findRecentOrdersByPeriod(currentStart, now, 10),
+    ]);
+
+    const revenueCurrent = revenueCurrentAgg._sum.totalPrice ?? 0;
+    const revenuePrevious = revenuePreviousAgg._sum.totalPrice ?? 0;
+    const revenueTrend = Array.from({ length: 7 }, (_, index) => {
+      const ratio = (index + 1) / 7;
+      return Math.round(revenueCurrent * ratio);
+    });
+
+    const currentStatusCount = new Map(
+      currentOrderStatusGroups.map((item) => [item.status, item._count.status]),
+    );
+    const previousStatusCount = new Map(
+      previousOrderStatusGroups.map((item) => [item.status, item._count.status]),
+    );
+
+    const ordersCurrentTotal = [...currentStatusCount.values()].reduce(
+      (sum, count) => sum + count,
+      0,
+    );
+    const ordersPreviousTotal = [...previousStatusCount.values()].reduce(
+      (sum, count) => sum + count,
+      0,
+    );
+
+    const pendingCurrent =
+      (currentStatusCount.get('pending') ?? 0) +
+      (currentStatusCount.get('address_confirmed') ?? 0) +
+      (currentStatusCount.get('order_confirmed') ?? 0) +
+      (currentStatusCount.get('packed') ?? 0);
+    const completedCurrent =
+      (currentStatusCount.get('delivered') ?? 0) + (currentStatusCount.get('completed') ?? 0);
+    const cancelledCurrent =
+      (currentStatusCount.get('cancelled') ?? 0) + (currentStatusCount.get('failed_delivery') ?? 0);
+
+    const topProductIds = topProductGroups.map((item) => item.productId);
+    const topProductInfos = topProductIds.length
+      ? await this.adminRepository.findProductsBasicByIds(topProductIds)
+      : [];
+    const productInfoMap = new Map(topProductInfos.map((item) => [item.id, item]));
+
+    const topProducts = topProductGroups.map((item) => {
+      const info = productInfoMap.get(item.productId);
+      const sales = item._sum.quantity ?? 0;
+      const unitPrice = info?.price ?? 0;
+      return {
+        name: info?.name ?? 'Unknown',
+        sales,
+        revenue: unitPrice * sales,
+      };
+    });
+
+    const recentActivity = recentOrders.map((order) => ({
+      action: `Order ${order.status}`,
+      time: order.createdAt.toISOString(),
+      value: `${order.totalPrice.toLocaleString('vi-VN')} VND`,
+    }));
+
+    return {
+      revenue: {
+        total: revenueCurrent,
+        change: this.percentageChange(revenueCurrent, revenuePrevious),
+        trend: revenueTrend,
+      },
+      orders: {
+        total: ordersCurrentTotal,
+        change: this.percentageChange(ordersCurrentTotal, ordersPreviousTotal),
+        pending: pendingCurrent,
+        completed: completedCurrent,
+        cancelled: cancelledCurrent,
+      },
+      customers: {
+        total: totalCustomers,
+        change: this.percentageChange(newCustomersCurrent, newCustomersPrevious),
+        active: activeCustomersCurrent,
+        new: newCustomersCurrent,
+      },
+      products: {
+        total: totalProducts,
+        change: this.percentageChange(productsCurrent, productsPrevious),
+        lowStock,
+        outOfStock,
+      },
+      topProducts,
+      recentActivity,
+    };
   }
 
   async getSubscriptions(pagination?: PaginateOptionsDTO) {

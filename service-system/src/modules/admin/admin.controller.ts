@@ -150,9 +150,9 @@ export class AdminController {
   }
 
   @Get('analytics')
-  getAnalytics(@CurrentUser() user) {
+  getAnalytics(@Query('period') period: string, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
-    return this.adminService.getAnalytics();
+    return this.adminService.getAnalytics(period);
   }
 
   @Get('stats')

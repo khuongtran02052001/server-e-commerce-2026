@@ -132,6 +132,21 @@ export class AdminRepository {
     return this.prisma.order.count();
   }
 
+  aggregateOrders(where: Prisma.OrderWhereInput) {
+    return this.prisma.order.aggregate({
+      where,
+      _sum: { totalPrice: true },
+    });
+  }
+
+  groupOrdersByStatusBetween(start: Date, end: Date) {
+    return this.prisma.order.groupBy({
+      by: ['status'],
+      where: { createdAt: { gte: start, lt: end } },
+      _count: { status: true },
+    });
+  }
+
   getOrderById(id: string) {
     return this.prisma.order.findUnique({ where: { id } });
   }
@@ -153,6 +168,75 @@ export class AdminRepository {
 
   countProducts() {
     return this.prisma.product.count();
+  }
+
+  countProductsWhere(where: Prisma.ProductWhereInput) {
+    return this.prisma.product.count({ where });
+  }
+
+  groupTopOrderItemsByPeriod(start: Date, end: Date, take = 5) {
+    return this.prisma.orderProduct.groupBy({
+      by: ['productId'],
+      where: {
+        order: {
+          createdAt: { gte: start, lt: end },
+          status: { notIn: ['cancelled', 'failed_delivery'] },
+        },
+      },
+      _sum: {
+        quantity: true,
+      },
+      orderBy: {
+        _sum: {
+          quantity: 'desc',
+        },
+      },
+      take,
+    });
+  }
+
+  findProductsBasicByIds(productIds: string[]) {
+    return this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+      },
+    });
+  }
+
+  findRecentOrdersByPeriod(start: Date, end: Date, take = 10) {
+    return this.prisma.order.findMany({
+      where: { createdAt: { gte: start, lt: end } },
+      orderBy: { createdAt: 'desc' },
+      take,
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        totalPrice: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  countUsersCreatedBetween(start: Date, end: Date) {
+    return this.prisma.user.count({
+      where: { createdAt: { gte: start, lt: end } },
+    });
+  }
+
+  countUsersWithOrdersBetween(start: Date, end: Date) {
+    return this.prisma.user.count({
+      where: {
+        orders: {
+          some: {
+            createdAt: { gte: start, lt: end },
+          },
+        },
+      },
+    });
   }
 
   createNotifications(
