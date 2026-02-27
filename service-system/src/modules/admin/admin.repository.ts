@@ -163,6 +163,18 @@ export class AdminRepository {
       orderBy: { createdAt: 'desc' },
       take: pagination.take,
       skip: pagination.skip,
+      include: {
+        brand: {
+          select: {
+            name: true,
+          },
+        },
+        categories: {
+          select: {
+            title: true,
+          },
+        },
+      },
     });
   }
 
