@@ -46,6 +46,8 @@ export class AuthService {
         sub: user.id,
         email: user.email,
         isAdmin: user.isAdmin,
+        isEmployee: user.isEmployee,
+        employeeRole: user.employeeRole,
       },
       { expiresIn: '7d' },
     );

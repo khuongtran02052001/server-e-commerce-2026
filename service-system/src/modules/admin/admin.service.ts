@@ -8,6 +8,12 @@ import { Prisma } from 'generated/prisma';
 import { PaginateOptionsDTO } from 'src/common/dto/paginate-options.dto';
 import { AdminUpdateOrderDto } from '../orders/dto/admin-update-order.dto';
 import { AdminRepository } from './admin.repository';
+import {
+  AssignEmployeeRoleDto,
+  EmployeeQueryDto,
+  ManageEmployeeByEmailDto,
+} from './dto/employee.dto';
+import { AssignDeliveryDto, MarkDeliveredDto, WorkflowNoteDto } from './dto/order-workflow.dto';
 
 type PaginationMeta = {
   page: number;
@@ -17,6 +23,7 @@ type PaginationMeta = {
 };
 
 type AnalyticsPeriod = '7d' | '30d' | '90d' | '1y';
+type EmployeeRole = 'CALL_CENTER' | 'PACKER' | 'DELIVERY_MAN' | 'INCHARGE' | 'ACCOUNTS';
 
 @Injectable()
 export class AdminService {
@@ -25,6 +32,31 @@ export class AdminService {
   ensureAdmin(user: { isAdmin?: boolean }) {
     if (!user?.isAdmin) {
       throw new ForbiddenException('Admin access required');
+    }
+  }
+
+  private normalizeEmployeeRoleInput(role: EmployeeRole) {
+    if (role === 'PACKER') return 'WARE_HOUSE';
+    return role;
+  }
+
+  private normalizeEmployeeRoleOutput(role?: string | null): EmployeeRole | null {
+    if (!role) return null;
+    if (role === 'WARE_HOUSE') return 'PACKER';
+    return role as EmployeeRole;
+  }
+
+  ensureEmployee(
+    user: { isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    allowedRoles?: EmployeeRole[],
+  ) {
+    if (user?.isAdmin) return;
+    if (!user?.isEmployee || !user?.employeeRole) {
+      throw new ForbiddenException('Employee access required');
+    }
+    const role = this.normalizeEmployeeRoleOutput(user.employeeRole);
+    if (allowedRoles && (!role || !allowedRoles.includes(role))) {
+      throw new ForbiddenException('You do not have permission for this action');
     }
   }
 
@@ -329,6 +361,243 @@ export class AdminService {
     });
   }
 
+  async listEmployees(pagination?: PaginateOptionsDTO, filters?: EmployeeQueryDto) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+    const where: Prisma.UserWhereInput = {
+      isEmployee: true,
+      ...(filters?.query
+        ? {
+            OR: [
+              { email: { contains: filters.query, mode: Prisma.QueryMode.insensitive } },
+              { firstName: { contains: filters.query, mode: Prisma.QueryMode.insensitive } },
+              { lastName: { contains: filters.query, mode: Prisma.QueryMode.insensitive } },
+            ],
+          }
+        : {}),
+      ...(filters?.status
+        ? {
+            isActive: filters.status === 'active',
+          }
+        : {}),
+      ...(filters?.role
+        ? {
+            employeeRole: this.normalizeEmployeeRoleInput(filters.role),
+          }
+        : {}),
+    };
+
+    const [employees, totalCount, byRole] = await Promise.all([
+      this.adminRepository.listEmployees(where, { skip, take }),
+      this.adminRepository.countEmployees(where),
+      this.adminRepository.countEmployeesByRole(),
+    ]);
+
+    return {
+      data: employees.map((employee) => ({
+        ...employee,
+        employeeRole: this.normalizeEmployeeRoleOutput(employee.employeeRole),
+      })),
+      meta: this.buildMeta(page, perPage, totalCount),
+      summary: {
+        total: byRole.reduce((sum, item) => sum + item._count.employeeRole, 0),
+        byRole: byRole.map((item) => ({
+          role: this.normalizeEmployeeRoleOutput(item.employeeRole),
+          count: item._count.employeeRole,
+        })),
+      },
+    };
+  }
+
+  async assignEmployeeRole(dto: AssignEmployeeRoleDto, actorId: string) {
+    const user = await this.adminRepository.findUserById(dto.userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const role = this.normalizeEmployeeRoleInput(dto.role);
+    const updated = await this.adminRepository.updateUser(dto.userId, {
+      isEmployee: true,
+      isActive: true,
+      employeeRole: role,
+    });
+
+    return {
+      success: true,
+      message: 'Employee role assigned successfully',
+      actorId,
+      data: {
+        ...updated,
+        employeeRole: this.normalizeEmployeeRoleOutput(updated.employeeRole),
+      },
+    };
+  }
+
+  async suspendEmployee(userId: string, reason: string | undefined, actorId: string) {
+    const user = await this.adminRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('Employee not found');
+    if (!user.isEmployee) throw new BadRequestException('User is not an employee');
+
+    const updated = await this.adminRepository.updateUser(userId, {
+      isActive: false,
+    });
+
+    return {
+      success: true,
+      message: 'Employee suspended',
+      reason: reason || null,
+      actorId,
+      data: {
+        ...updated,
+        employeeRole: this.normalizeEmployeeRoleOutput(updated.employeeRole),
+      },
+    };
+  }
+
+  async activateEmployee(userId: string, actorId: string) {
+    const user = await this.adminRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('Employee not found');
+    if (!user.isEmployee) throw new BadRequestException('User is not an employee');
+
+    const updated = await this.adminRepository.updateUser(userId, {
+      isActive: true,
+    });
+
+    return {
+      success: true,
+      message: 'Employee activated',
+      actorId,
+      data: {
+        ...updated,
+        employeeRole: this.normalizeEmployeeRoleOutput(updated.employeeRole),
+      },
+    };
+  }
+
+  async removeEmployeeRole(userId: string, actorId: string) {
+    const user = await this.adminRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('Employee not found');
+
+    const updated = await this.adminRepository.updateUser(userId, {
+      isEmployee: false,
+      employeeRole: null,
+    });
+
+    return {
+      success: true,
+      message: 'Employee role removed',
+      actorId,
+      data: updated,
+    };
+  }
+
+  async manageEmployeeByEmail(dto: ManageEmployeeByEmailDto, actorId: string) {
+    const existing = await this.adminRepository.findUserByEmail(dto.email.toLowerCase().trim());
+    if (!existing) throw new NotFoundException('User not found');
+
+    const updated = await this.adminRepository.updateUser(existing.id, {
+      isEmployee: true,
+      employeeRole: this.normalizeEmployeeRoleInput(dto.role),
+      isActive: dto.active ?? true,
+    });
+
+    return {
+      success: true,
+      message: 'Employee updated by email',
+      actorId,
+      data: {
+        ...updated,
+        employeeRole: this.normalizeEmployeeRoleOutput(updated.employeeRole),
+      },
+    };
+  }
+
+  async getEmployeeMetrics(user: {
+    id: string;
+    isAdmin?: boolean;
+    isEmployee?: boolean;
+    employeeRole?: string;
+  }) {
+    this.ensureEmployee(user);
+    const role = user.isAdmin ? 'INCHARGE' : this.normalizeEmployeeRoleOutput(user.employeeRole);
+
+    if (role === 'CALL_CENTER') {
+      const [totalOrders, pendingAction, completed] = await Promise.all([
+        this.adminRepository.countOrdersWhere({
+          status: { in: ['pending', 'address_confirmed', 'order_confirmed'] },
+        }),
+        this.adminRepository.countOrdersWhere({ status: 'pending' }),
+        this.adminRepository.countOrdersWhere({ status: 'order_confirmed' }),
+      ]);
+
+      return { totalOrders, pendingAction, completed, yourPerformance: completed };
+    }
+
+    if (role === 'PACKER') {
+      const [totalOrders, pendingAction, completed] = await Promise.all([
+        this.adminRepository.countOrdersWhere({
+          status: { in: ['order_confirmed', 'packed', 'out_for_delivery'] },
+        }),
+        this.adminRepository.countOrdersWhere({ status: 'order_confirmed' }),
+        this.adminRepository.countOrdersWhere({ status: 'packed' }),
+      ]);
+
+      return { totalOrders, pendingAction, completed, yourPerformance: completed };
+    }
+
+    if (role === 'DELIVERY_MAN') {
+      const [totalOrders, pendingAction, completed, cashAggregate] = await Promise.all([
+        this.adminRepository.countOrdersWhere({ assignedDeliverymanId: user.id }),
+        this.adminRepository.countOrdersWhere({
+          assignedDeliverymanId: user.id,
+          status: 'out_for_delivery',
+        }),
+        this.adminRepository.countOrdersWhere({
+          assignedDeliverymanId: user.id,
+          status: { in: ['delivered', 'completed'] },
+        }),
+        this.adminRepository.aggregateOrders({
+          assignedDeliverymanId: user.id,
+          cashCollectedAmount: { gt: 0 },
+        }),
+      ]);
+
+      return {
+        totalOrders,
+        pendingAction,
+        completed,
+        yourPerformance: completed,
+        totalCashCollected: cashAggregate._sum.cashCollectedAmount ?? 0,
+      };
+    }
+
+    if (role === 'ACCOUNTS') {
+      const [totalOrders, pendingAction, completed] = await Promise.all([
+        this.adminRepository.countOrders(),
+        this.adminRepository.countOrdersWhere({
+          status: 'delivered',
+          cashCollectedAmount: { gt: 0 },
+          paymentStatus: { not: 'paid' },
+        }),
+        this.adminRepository.countOrdersWhere({
+          paymentReceivedById: user.id,
+          paymentStatus: 'paid',
+        }),
+      ]);
+
+      return { totalOrders, pendingAction, completed, yourPerformance: completed };
+    }
+
+    const [totalOrders, pendingAction, completed] = await Promise.all([
+      this.adminRepository.countOrders(),
+      this.adminRepository.countOrdersWhere({
+        status: {
+          in: ['pending', 'address_confirmed', 'order_confirmed', 'packed', 'out_for_delivery'],
+        },
+      }),
+      this.adminRepository.countOrdersWhere({ status: { in: ['delivered', 'completed'] } }),
+    ]);
+
+    return { totalOrders, pendingAction, completed, yourPerformance: completed };
+  }
+
   async getOrders(pagination?: PaginateOptionsDTO) {
     const { page, perPage, skip, take } = this.normalizePagination(pagination);
     const [orders, totalCount] = await Promise.all([
@@ -357,6 +626,209 @@ export class AdminService {
       ...(dto.status ? { status: dto.status } : {}),
       ...(dto.paymentStatus ? { paymentStatus: dto.paymentStatus } : {}),
     });
+  }
+
+  private async getRequiredOrderForWorkflow(orderId: string) {
+    const order = await this.adminRepository.getOrderById(orderId);
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
+
+  private async logOrderAction(
+    orderId: string,
+    actor: { id: string; employeeRole?: string },
+    action: string,
+    notes?: string,
+    cashCollectedAmount?: number,
+  ) {
+    await this.adminRepository.createOrderActionLog({
+      orderId,
+      actorId: actor.id,
+      actorRole: this.normalizeEmployeeRoleOutput(actor.employeeRole || null) || 'ADMIN',
+      action,
+      notes,
+      cashCollectedAmount,
+    });
+  }
+
+  async confirmAddress(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: WorkflowNoteDto,
+  ) {
+    this.ensureEmployee(actor, ['CALL_CENTER', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'pending') {
+      throw new BadRequestException('Only pending orders can be address confirmed');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      status: 'address_confirmed',
+    });
+    await this.logOrderAction(orderId, actor, 'ADDRESS_CONFIRMED', dto.notes);
+    return { success: true, message: 'Address confirmed', order: updated };
+  }
+
+  async confirmOrder(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: WorkflowNoteDto,
+  ) {
+    this.ensureEmployee(actor, ['CALL_CENTER', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'address_confirmed') {
+      throw new BadRequestException('Order must be address_confirmed first');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      status: 'order_confirmed',
+    });
+    await this.logOrderAction(orderId, actor, 'ORDER_CONFIRMED', dto.notes);
+    return { success: true, message: 'Order confirmed', order: updated };
+  }
+
+  async markPacked(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: WorkflowNoteDto,
+  ) {
+    this.ensureEmployee(actor, ['PACKER', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'order_confirmed') {
+      throw new BadRequestException('Order must be order_confirmed before packing');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      status: 'packed',
+    });
+    await this.logOrderAction(orderId, actor, 'ORDER_PACKED', dto.notes);
+    return { success: true, message: 'Order packed', order: updated };
+  }
+
+  async assignDeliveryman(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: AssignDeliveryDto,
+  ) {
+    this.ensureEmployee(actor, ['PACKER', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'packed' && order.status !== 'ready_for_delivery') {
+      throw new BadRequestException('Order must be packed before assigning deliveryman');
+    }
+
+    let deliverymanId = dto.deliverymanId;
+    if (!deliverymanId) {
+      const deliveryman = await this.adminRepository.findUsers(
+        { isEmployee: true, isActive: true, employeeRole: 'DELIVERY_MAN' },
+        { skip: 0, take: 1 },
+      );
+      deliverymanId = deliveryman[0]?.id;
+    }
+    if (!deliverymanId) {
+      throw new BadRequestException('No available deliveryman');
+    }
+
+    const assigned = await this.adminRepository.findUserById(deliverymanId);
+    if (!assigned || !assigned.isEmployee || assigned.employeeRole !== 'DELIVERY_MAN') {
+      throw new BadRequestException('Assigned user must be an active deliveryman');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      assignedDeliveryman: {
+        connect: { id: deliverymanId },
+      },
+      status: 'out_for_delivery',
+    });
+    await this.logOrderAction(
+      orderId,
+      actor,
+      'DELIVERY_ASSIGNED',
+      dto.notes || `Assigned to ${assigned.email}`,
+    );
+    return { success: true, message: 'Deliveryman assigned', order: updated };
+  }
+
+  async markDelivered(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: MarkDeliveredDto,
+  ) {
+    this.ensureEmployee(actor, ['DELIVERY_MAN', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'out_for_delivery') {
+      throw new BadRequestException('Order must be out_for_delivery');
+    }
+    if (!actor.isAdmin && order.assignedDeliverymanId && order.assignedDeliverymanId !== actor.id) {
+      throw new ForbiddenException('Order is assigned to another deliveryman');
+    }
+
+    const requiresCash =
+      ['cod', 'cash_on_delivery', 'pending'].includes((order.paymentMethod || '').toLowerCase()) ||
+      ['pending', 'cash_on_delivery'].includes((order.paymentStatus || '').toLowerCase());
+
+    if (requiresCash && (dto.cashCollectedAmount == null || dto.cashCollectedAmount <= 0)) {
+      throw new BadRequestException('Cash collection amount is required for this order');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      status: 'delivered',
+      ...(dto.cashCollectedAmount != null
+        ? {
+            cashCollectedAmount: dto.cashCollectedAmount,
+            cashCollectedAt: new Date(),
+          }
+        : {}),
+    });
+    await this.logOrderAction(
+      orderId,
+      actor,
+      'ORDER_DELIVERED',
+      dto.notes,
+      dto.cashCollectedAmount,
+    );
+    return { success: true, message: 'Order marked as delivered', order: updated };
+  }
+
+  async receivePayment(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: WorkflowNoteDto,
+  ) {
+    this.ensureEmployee(actor, ['ACCOUNTS', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'delivered') {
+      throw new BadRequestException('Only delivered orders can be received');
+    }
+    if (!order.cashCollectedAmount || order.cashCollectedAmount <= 0) {
+      throw new BadRequestException('No cash collection found for this order');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      paymentStatus: 'paid',
+      status: 'completed',
+      paymentReceivedAt: new Date(),
+      paymentReceivedBy: {
+        connect: { id: actor.id },
+      },
+    });
+    await this.logOrderAction(orderId, actor, 'PAYMENT_RECEIVED', dto.notes);
+    return { success: true, message: 'Payment received', order: updated };
+  }
+
+  async getOrderWorkflow(orderId: string) {
+    await this.getRequiredOrderForWorkflow(orderId);
+    const logs = await this.adminRepository.listOrderActionLogs(orderId);
+    return {
+      success: true,
+      data: logs.map((log) => ({
+        id: log.id,
+        action: log.action,
+        role: log.actorRole,
+        notes: log.notes,
+        cashCollectedAmount: log.cashCollectedAmount,
+        createdAt: log.createdAt,
+      })),
+    };
   }
 
   async getProducts(pagination?: PaginateOptionsDTO) {

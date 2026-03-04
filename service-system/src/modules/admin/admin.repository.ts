@@ -20,6 +20,38 @@ export class AdminRepository {
     });
   }
 
+  listEmployees(where: Prisma.UserWhereInput | undefined, pagination: Pagination) {
+    return this.prisma.user.findMany({
+      where,
+      take: pagination.take,
+      skip: pagination.skip,
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        isActive: true,
+        isEmployee: true,
+        employeeRole: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  countEmployees(where: Prisma.UserWhereInput | undefined) {
+    return this.prisma.user.count({ where });
+  }
+
+  countEmployeesByRole() {
+    return this.prisma.user.groupBy({
+      by: ['employeeRole'],
+      where: { isEmployee: true },
+      _count: { employeeRole: true },
+    });
+  }
+
   countUsers(where: Prisma.UserWhereInput | undefined) {
     return this.prisma.user.count({ where });
   }
@@ -125,6 +157,14 @@ export class AdminRepository {
       orderBy: { createdAt: 'desc' },
       take: pagination.take,
       skip: pagination.skip,
+      include: {
+        assignedDeliveryman: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        paymentReceivedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
     });
   }
 
@@ -135,8 +175,12 @@ export class AdminRepository {
   aggregateOrders(where: Prisma.OrderWhereInput) {
     return this.prisma.order.aggregate({
       where,
-      _sum: { totalPrice: true },
+      _sum: { totalPrice: true, cashCollectedAmount: true },
     });
+  }
+
+  countOrdersWhere(where: Prisma.OrderWhereInput) {
+    return this.prisma.order.count({ where });
   }
 
   groupOrdersByStatusBetween(start: Date, end: Date) {
@@ -148,13 +192,34 @@ export class AdminRepository {
   }
 
   getOrderById(id: string) {
-    return this.prisma.order.findUnique({ where: { id } });
+    return this.prisma.order.findUnique({
+      where: { id },
+      include: {
+        assignedDeliveryman: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        paymentReceivedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
   }
 
   updateOrderById(id: string, data: Prisma.OrderUpdateInput) {
     return this.prisma.order.update({
       where: { id },
       data,
+    });
+  }
+
+  createOrderActionLog(data: Prisma.OrderActionLogUncheckedCreateInput) {
+    return this.prisma.orderActionLog.create({ data });
+  }
+
+  listOrderActionLogs(orderId: string) {
+    return this.prisma.orderActionLog.findMany({
+      where: { orderId },
+      orderBy: { createdAt: 'asc' },
     });
   }
 

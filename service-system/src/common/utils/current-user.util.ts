@@ -4,6 +4,8 @@ export interface CurrentUserType {
   id: string;
   email: string;
   isAdmin: boolean;
+  isEmployee?: boolean;
+  employeeRole?: string;
 }
 
 export const CurrentUser = createParamDecorator((data: unknown, ctx: ExecutionContext) => {

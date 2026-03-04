@@ -15,6 +15,13 @@ import { CurrentUser } from 'src/common/utils/current-user.util';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminUpdateOrderDto } from '../orders/dto/admin-update-order.dto';
 import { AdminService } from './admin.service';
+import {
+  AssignEmployeeRoleDto,
+  EmployeeQueryDto,
+  ManageEmployeeByEmailDto,
+  SuspendEmployeeDto,
+} from './dto/employee.dto';
+import { AssignDeliveryDto, MarkDeliveredDto, WorkflowNoteDto } from './dto/order-workflow.dto';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -149,6 +156,55 @@ export class AdminController {
     return { success: true, message: 'Sync disabled in REST mode' };
   }
 
+  @Get('employees')
+  listEmployees(
+    @Query() pagination: PaginateOptionsDTO,
+    @Query() filters: EmployeeQueryDto,
+    @CurrentUser() user,
+  ) {
+    this.adminService.ensureAdmin(user);
+    return this.adminService.listEmployees(pagination, filters);
+  }
+
+  @Post('employees/assign-role')
+  assignEmployeeRole(@Body() body: AssignEmployeeRoleDto, @CurrentUser() user) {
+    this.adminService.ensureAdmin(user);
+    return this.adminService.assignEmployeeRole(body, user.id);
+  }
+
+  @Patch('employees/:userId/suspend')
+  suspendEmployee(
+    @Param('userId') userId: string,
+    @Body() body: SuspendEmployeeDto,
+    @CurrentUser() user,
+  ) {
+    this.adminService.ensureAdmin(user);
+    return this.adminService.suspendEmployee(userId, body.reason, user.id);
+  }
+
+  @Patch('employees/:userId/activate')
+  activateEmployee(@Param('userId') userId: string, @CurrentUser() user) {
+    this.adminService.ensureAdmin(user);
+    return this.adminService.activateEmployee(userId, user.id);
+  }
+
+  @Delete('employees/:userId/role')
+  removeEmployeeRole(@Param('userId') userId: string, @CurrentUser() user) {
+    this.adminService.ensureAdmin(user);
+    return this.adminService.removeEmployeeRole(userId, user.id);
+  }
+
+  @Post('employees/manage-user')
+  manageEmployeeByEmail(@Body() body: ManageEmployeeByEmailDto, @CurrentUser() user) {
+    this.adminService.ensureAdmin(user);
+    return this.adminService.manageEmployeeByEmail(body, user.id);
+  }
+
+  @Get('employees/me/metrics')
+  getEmployeeMetrics(@CurrentUser() user) {
+    return this.adminService.getEmployeeMetrics(user);
+  }
+
   @Get('analytics')
   getAnalytics(@Query('period') period: string, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
@@ -183,6 +239,42 @@ export class AdminController {
   updateOrder(@Param('id') id: string, @Body() body: AdminUpdateOrderDto, @CurrentUser() user) {
     this.adminService.ensureAdmin(user);
     return this.adminService.updateOrder(id, body);
+  }
+
+  @Patch('orders/:id/address-confirm')
+  confirmAddress(@Param('id') id: string, @Body() body: WorkflowNoteDto, @CurrentUser() user) {
+    return this.adminService.confirmAddress(id, user, body);
+  }
+
+  @Patch('orders/:id/order-confirm')
+  confirmOrder(@Param('id') id: string, @Body() body: WorkflowNoteDto, @CurrentUser() user) {
+    return this.adminService.confirmOrder(id, user, body);
+  }
+
+  @Patch('orders/:id/pack')
+  markPacked(@Param('id') id: string, @Body() body: WorkflowNoteDto, @CurrentUser() user) {
+    return this.adminService.markPacked(id, user, body);
+  }
+
+  @Patch('orders/:id/assign-deliveryman')
+  assignDeliveryman(@Param('id') id: string, @Body() body: AssignDeliveryDto, @CurrentUser() user) {
+    return this.adminService.assignDeliveryman(id, user, body);
+  }
+
+  @Patch('orders/:id/deliver')
+  markDelivered(@Param('id') id: string, @Body() body: MarkDeliveredDto, @CurrentUser() user) {
+    return this.adminService.markDelivered(id, user, body);
+  }
+
+  @Patch('orders/:id/receive-payment')
+  receivePayment(@Param('id') id: string, @Body() body: WorkflowNoteDto, @CurrentUser() user) {
+    return this.adminService.receivePayment(id, user, body);
+  }
+
+  @Get('orders/:id/workflow')
+  getOrderWorkflow(@Param('id') id: string, @CurrentUser() user) {
+    this.adminService.ensureEmployee(user);
+    return this.adminService.getOrderWorkflow(id);
   }
 
   @Get('notifications')
