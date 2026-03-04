@@ -9,10 +9,52 @@ import { OrdersRepository } from './orders.repository';
 export class OrdersService {
   constructor(private repo: OrdersRepository) {}
 
-  async createOrder(dto: CreateOrderDto, user: any) {
-    const orderNumber = `ORDER-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
+  private readonly orderTaxRate = Number(process.env.ORDER_TAX_RATE ?? 0);
+  private readonly orderShippingFee = Number(process.env.ORDER_SHIPPING_FEE ?? 30000);
+  private readonly freeShippingThreshold = Number(process.env.FREE_SHIPPING_THRESHOLD ?? 149000);
 
-    const data: any = {
+  private normalizePaymentMethod(method: string) {
+    return method.trim().toLowerCase();
+  }
+
+  async createOrder(dto: CreateOrderDto, user: any) {
+    if (!dto.items?.length) {
+      throw new BadRequestException('Order must include at least one item');
+    }
+
+    const quantityByProductId = new Map<string, number>();
+    for (const item of dto.items) {
+      const current = quantityByProductId.get(item.productId) ?? 0;
+      quantityByProductId.set(item.productId, current + item.quantity);
+    }
+
+    const productIds = Array.from(quantityByProductId.keys());
+    const products = await this.repo.findProductsForOrder(productIds);
+    if (products.length !== productIds.length) {
+      throw new BadRequestException('One or more products do not exist');
+    }
+
+    let subtotal = 0;
+    for (const product of products) {
+      const quantity = quantityByProductId.get(product.id) ?? 0;
+      const unitPrice = product.price ?? 0;
+      if (quantity <= 0) {
+        throw new BadRequestException(`Invalid quantity for product ${product.id}`);
+      }
+      if (product.stock != null && product.stock < quantity) {
+        throw new BadRequestException(`Insufficient stock for product ${product.name}`);
+      }
+      subtotal += unitPrice * quantity;
+    }
+
+    const tax = Math.round(subtotal * this.orderTaxRate);
+    const shipping = subtotal >= this.freeShippingThreshold ? 0 : this.orderShippingFee;
+    const totalPrice = subtotal + tax + shipping;
+
+    const orderNumber = `ORDER-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
+    const paymentMethod = this.normalizePaymentMethod(dto.paymentMethod);
+
+    const orderData = {
       orderNumber,
       userId: user.id,
       customerName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
@@ -21,28 +63,34 @@ export class OrdersService {
 
       status: 'pending',
       paymentMethod: dto.paymentMethod,
-      paymentStatus: dto.paymentMethod === 'cod' ? 'pending' : 'paid',
-
-      totalPrice: dto.totalPrice,
-      subtotal: dto.subtotal,
-      shipping: dto.shipping,
-      tax: dto.tax,
+      paymentStatus:
+        paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery' ? 'pending' : 'paid',
+      totalPrice,
+      subtotal,
+      shipping,
+      tax,
 
       addressName: dto.addressName,
       address: dto.address,
       city: dto.city,
       state: dto.state,
       zip: dto.zip,
-
-      products: {
-        create: dto.items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        })),
-      },
     };
+    const orderItems = Array.from(quantityByProductId.entries()).map(([productId, quantity]) => ({
+      productId,
+      quantity,
+    }));
 
-    const order = await this.repo.create(data);
+    let order;
+    try {
+      order = await this.repo.createWithStockReservation(orderData, orderItems);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('OUT_OF_STOCK:')) {
+        const outProductId = error.message.replace('OUT_OF_STOCK:', '');
+        throw new BadRequestException(`Insufficient stock for product ${outProductId}`);
+      }
+      throw error;
+    }
 
     return {
       success: true,

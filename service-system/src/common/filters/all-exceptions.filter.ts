@@ -1,6 +1,6 @@
 // src/common/filters/all-exceptions.filter.ts
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { Prisma } from 'generated/prisma';
 import { ApiResponse } from '../utils/api-response.util';
 // (tuỳ chọn) nếu dùng Zod hoặc Prisma thì import thêm:
@@ -12,7 +12,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let body: ApiResponse<null>;
@@ -80,7 +79,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // }
     // 3) (tuỳ chọn) Nếu muốn xử lý riêng Prisma error
     else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
-      console.log(exception);
+      const prismaError = exception as Prisma.PrismaClientKnownRequestError;
+      console.log(prismaError);
       status = HttpStatus.BAD_REQUEST;
       // body = {
       //   success: false,
@@ -92,7 +92,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       //     details: exception.meta,
       //   },
       // };
-      body = ApiResponse.error(exception.code, 'Database error', exception.meta);
+      body = ApiResponse.error(prismaError.code, 'Database error', prismaError.meta);
     }
     // 4) Các lỗi còn lại
     else {

@@ -207,8 +207,7 @@ export class AdminController {
 
   @Get('analytics')
   getAnalytics(@Query('period') period: string, @CurrentUser() user) {
-    this.adminService.ensureAdmin(user);
-    return this.adminService.getAnalytics(period);
+    return this.adminService.getAnalytics(period, user);
   }
 
   @Get('stats')
@@ -225,14 +224,12 @@ export class AdminController {
 
   @Get('orders')
   getOrders(@Query() pagination: PaginateOptionsDTO, @CurrentUser() user) {
-    this.adminService.ensureAdmin(user);
-    return this.adminService.getOrders(pagination);
+    return this.adminService.getOrdersByActor(pagination, user);
   }
 
   @Get('orders/:id')
   getOrderById(@Param('id') id: string, @CurrentUser() user) {
-    this.adminService.ensureAdmin(user);
-    return this.adminService.getOrderById(id);
+    return this.adminService.getOrderByIdForActor(id, user);
   }
 
   @Patch('orders/:id')
@@ -261,9 +258,24 @@ export class AdminController {
     return this.adminService.assignDeliveryman(id, user, body);
   }
 
+  @Patch('orders/:id/start-delivery')
+  startDelivery(@Param('id') id: string, @Body() body: WorkflowNoteDto, @CurrentUser() user) {
+    return this.adminService.startDelivery(id, user, body);
+  }
+
   @Patch('orders/:id/deliver')
   markDelivered(@Param('id') id: string, @Body() body: MarkDeliveredDto, @CurrentUser() user) {
     return this.adminService.markDelivered(id, user, body);
+  }
+
+  @Patch('orders/:id/reschedule-delivery')
+  rescheduleDelivery(@Param('id') id: string, @Body() body: WorkflowNoteDto, @CurrentUser() user) {
+    return this.adminService.rescheduleDelivery(id, user, body);
+  }
+
+  @Patch('orders/:id/failed-delivery')
+  markDeliveryFailed(@Param('id') id: string, @Body() body: WorkflowNoteDto, @CurrentUser() user) {
+    return this.adminService.markDeliveryFailed(id, user, body);
   }
 
   @Patch('orders/:id/receive-payment')

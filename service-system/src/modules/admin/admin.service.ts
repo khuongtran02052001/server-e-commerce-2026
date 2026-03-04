@@ -547,7 +547,7 @@ export class AdminService {
         this.adminRepository.countOrdersWhere({ assignedDeliverymanId: user.id }),
         this.adminRepository.countOrdersWhere({
           assignedDeliverymanId: user.id,
-          status: 'out_for_delivery',
+          status: { in: ['ready_for_delivery', 'out_for_delivery', 'rescheduled'] },
         }),
         this.adminRepository.countOrdersWhere({
           assignedDeliverymanId: user.id,
@@ -608,8 +608,72 @@ export class AdminService {
     return { data: orders, meta: this.buildMeta(page, perPage, totalCount) };
   }
 
-  getOrderById(id: string) {
-    return this.adminRepository.getOrderById(id);
+  async getOrdersByActor(
+    pagination: PaginateOptionsDTO | undefined,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+  ) {
+    const { page, perPage, skip, take } = this.normalizePagination(pagination);
+
+    if (actor.isAdmin) {
+      const [orders, totalCount] = await Promise.all([
+        this.adminRepository.listOrders({ skip, take }),
+        this.adminRepository.countOrders(),
+      ]);
+      return { data: orders, meta: this.buildMeta(page, perPage, totalCount) };
+    }
+
+    this.ensureEmployee(actor);
+    const role = this.normalizeEmployeeRoleOutput(actor.employeeRole);
+    let where: Prisma.OrderWhereInput = {};
+
+    if (role === 'CALL_CENTER') {
+      where = { status: { in: ['pending', 'address_confirmed'] } };
+    } else if (role === 'PACKER') {
+      where = { status: { in: ['order_confirmed', 'packed'] } };
+    } else if (role === 'DELIVERY_MAN') {
+      where = {
+        assignedDeliverymanId: actor.id,
+        status: { in: ['ready_for_delivery', 'out_for_delivery', 'rescheduled', 'delivered'] },
+      };
+    } else if (role === 'ACCOUNTS') {
+      where = {
+        OR: [
+          { status: 'delivered', paymentStatus: { not: 'paid' } },
+          { paymentReceivedById: actor.id },
+        ],
+      };
+    } else if (role === 'INCHARGE') {
+      where = {};
+    }
+
+    const [orders, totalCount] = await Promise.all([
+      this.adminRepository.listOrdersByWhere(where, { skip, take }),
+      this.adminRepository.countOrdersByWhere(where),
+    ]);
+
+    return { data: orders, meta: this.buildMeta(page, perPage, totalCount) };
+  }
+
+  async getOrderByIdForActor(
+    id: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+  ) {
+    const order = await this.adminRepository.getOrderById(id);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (actor.isAdmin) {
+      return order;
+    }
+
+    this.ensureEmployee(actor);
+    const role = this.normalizeEmployeeRoleOutput(actor.employeeRole);
+    if (role === 'DELIVERY_MAN' && order.assignedDeliverymanId !== actor.id) {
+      throw new ForbiddenException('You can only view your assigned deliveries');
+    }
+
+    return order;
   }
 
   async updateOrder(id: string, dto: AdminUpdateOrderDto) {
@@ -737,7 +801,7 @@ export class AdminService {
       assignedDeliveryman: {
         connect: { id: deliverymanId },
       },
-      status: 'out_for_delivery',
+      status: 'ready_for_delivery',
     });
     await this.logOrderAction(
       orderId,
@@ -746,6 +810,27 @@ export class AdminService {
       dto.notes || `Assigned to ${assigned.email}`,
     );
     return { success: true, message: 'Deliveryman assigned', order: updated };
+  }
+
+  async startDelivery(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: WorkflowNoteDto,
+  ) {
+    this.ensureEmployee(actor, ['DELIVERY_MAN', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'ready_for_delivery') {
+      throw new BadRequestException('Order must be ready_for_delivery');
+    }
+    if (!actor.isAdmin && order.assignedDeliverymanId && order.assignedDeliverymanId !== actor.id) {
+      throw new ForbiddenException('Order is assigned to another deliveryman');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      status: 'out_for_delivery',
+    });
+    await this.logOrderAction(orderId, actor, 'DELIVERY_STARTED', dto.notes);
+    return { success: true, message: 'Delivery started', order: updated };
   }
 
   async markDelivered(
@@ -787,6 +872,48 @@ export class AdminService {
       dto.cashCollectedAmount,
     );
     return { success: true, message: 'Order marked as delivered', order: updated };
+  }
+
+  async rescheduleDelivery(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: WorkflowNoteDto,
+  ) {
+    this.ensureEmployee(actor, ['DELIVERY_MAN', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'out_for_delivery') {
+      throw new BadRequestException('Only out_for_delivery orders can be rescheduled');
+    }
+    if (!actor.isAdmin && order.assignedDeliverymanId && order.assignedDeliverymanId !== actor.id) {
+      throw new ForbiddenException('Order is assigned to another deliveryman');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      status: 'rescheduled',
+    });
+    await this.logOrderAction(orderId, actor, 'DELIVERY_RESCHEDULED', dto.notes);
+    return { success: true, message: 'Delivery rescheduled', order: updated };
+  }
+
+  async markDeliveryFailed(
+    orderId: string,
+    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    dto: WorkflowNoteDto,
+  ) {
+    this.ensureEmployee(actor, ['DELIVERY_MAN', 'INCHARGE']);
+    const order = await this.getRequiredOrderForWorkflow(orderId);
+    if (order.status !== 'out_for_delivery') {
+      throw new BadRequestException('Only out_for_delivery orders can be marked failed');
+    }
+    if (!actor.isAdmin && order.assignedDeliverymanId && order.assignedDeliverymanId !== actor.id) {
+      throw new ForbiddenException('Order is assigned to another deliveryman');
+    }
+
+    const updated = await this.adminRepository.updateOrderById(orderId, {
+      status: 'failed_delivery',
+    });
+    await this.logOrderAction(orderId, actor, 'DELIVERY_FAILED', dto.notes);
+    return { success: true, message: 'Delivery marked as failed', order: updated };
   }
 
   async receivePayment(
@@ -912,7 +1039,13 @@ export class AdminService {
     return Number((((current - previous) / previous) * 100).toFixed(2));
   }
 
-  async getAnalytics(period?: string) {
+  async getAnalytics(
+    period: string | undefined,
+    actor?: { isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+  ) {
+    if (actor && !actor.isAdmin) {
+      this.ensureEmployee(actor, ['INCHARGE', 'ACCOUNTS']);
+    }
     const normalizedPeriod = this.parsePeriod(period);
     const days = this.getPeriodDays(normalizedPeriod);
 

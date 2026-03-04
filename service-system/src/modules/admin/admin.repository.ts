@@ -168,6 +168,27 @@ export class AdminRepository {
     });
   }
 
+  listOrdersByWhere(where: Prisma.OrderWhereInput, pagination: Pagination) {
+    return this.prisma.order.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: pagination.take,
+      skip: pagination.skip,
+      include: {
+        assignedDeliveryman: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        paymentReceivedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+  }
+
+  countOrdersByWhere(where: Prisma.OrderWhereInput) {
+    return this.prisma.order.count({ where });
+  }
+
   countOrders() {
     return this.prisma.order.count();
   }
