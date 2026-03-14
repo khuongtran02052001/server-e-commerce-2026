@@ -64,4 +64,77 @@ export class UsersRepository {
       select: { id: true, email: true, firstName: true, lastName: true },
     });
   }
+
+  getWishlist(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        wishlist: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            price: true,
+            discount: true,
+            stock: true,
+            status: true,
+            images: { select: { url: true, alt: true } },
+            brand: { select: { id: true, name: true, slug: true } },
+          },
+        },
+      },
+    });
+  }
+
+  addWishlistItem(userId: string, productId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        wishlist: {
+          connect: { id: productId },
+        },
+      },
+      select: {
+        wishlist: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            price: true,
+            discount: true,
+            stock: true,
+            status: true,
+            images: { select: { url: true, alt: true } },
+            brand: { select: { id: true, name: true, slug: true } },
+          },
+        },
+      },
+    });
+  }
+
+  removeWishlistItem(userId: string, productId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        wishlist: {
+          disconnect: { id: productId },
+        },
+      },
+      select: {
+        wishlist: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            price: true,
+            discount: true,
+            stock: true,
+            status: true,
+            images: { select: { url: true, alt: true } },
+            brand: { select: { id: true, name: true, slug: true } },
+          },
+        },
+      },
+    });
+  }
 }

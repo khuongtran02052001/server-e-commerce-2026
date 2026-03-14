@@ -52,6 +52,11 @@ Related FE screens then call:
   - `GET /user/notifications`
   - `GET /user/addresses`
 
+Wishlist:
+- FE uses `/users/:userId/wishlist`
+- Only owner or admin can access
+- Methods: `GET`, `POST { productId }`, `DELETE ?productId=`
+
 Expected behavior:
 - 401 -> FE redirects to sign-in.
 - 200 with nullable profile fields is valid (no forced sign-out).

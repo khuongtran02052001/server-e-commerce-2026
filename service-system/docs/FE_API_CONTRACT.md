@@ -253,6 +253,29 @@ Body:
 ### GET `/reviews/can-review?productId=<uuid>`
 - JWT required
 
+## 8. Wishlist (User)
+
+Base path (as used by FE):
+- `/users/:userId/wishlist`
+
+Rules:
+- JWT required
+- Only the owner (`:userId`) or admin can access
+
+### GET `/users/:userId/wishlist`
+Response:
+```json
+{ "success": true, "data": [/* product list */] }
+```
+
+### POST `/users/:userId/wishlist`
+Body:
+```json
+{ "productId": "uuid" }
+```
+
+### DELETE `/users/:userId/wishlist?productId=<uuid>`
+
 ---
 
 Notes:
@@ -260,7 +283,7 @@ Notes:
 - Re-login required after role updates so JWT contains latest `isEmployee` and `employeeRole`.
 - Delivery flow status: `packed` -> `ready_for_delivery` -> `out_for_delivery` -> `delivered` -> `completed`.
 
-## 8. Migration Discipline (Sanity -> REST)
+## 9. Migration Discipline (Sanity -> REST)
 
 - This contract is the canonical runtime source.
 - Legacy Sanity files are for behavior reference only.
@@ -269,7 +292,7 @@ Notes:
   - `docs/REST_FEATURE_FLOW_FOR_BE.md`
   - `docs/SANITY_LEGACY_TRACKER.md`
 
-## 9. Canonical vs Compatibility Endpoints
+## 10. Canonical vs Compatibility Endpoints
 
 Canonical for FE:
 - `/auth/*`, `/orders/*`, `/reviews/*`, `/newsletter/*`, `/admin/*`

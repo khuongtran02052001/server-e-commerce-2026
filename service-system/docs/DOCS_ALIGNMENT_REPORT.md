@@ -37,6 +37,10 @@ Implemented in backend:
 - `NEWSLETTER_SUBSCRIPTION.md` (API behavior aligned)
 - subscribe / unsubscribe / status endpoints aligned with FE flow
 
+### Wishlist
+- User wishlist endpoints under `/users/:userId/wishlist`
+- Owner/admin access enforced
+
 ### Orders Pricing Authority (newly aligned)
 - `POST /orders` is now fully server-authoritative for pricing:
   - product price fetched from DB

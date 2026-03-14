@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -13,11 +14,14 @@ import {
 import { ApiHeader, ApiTags } from '@nestjs/swagger';
 import { User } from 'generated/prisma';
 import { PaginateOptionsDTO } from 'src/common/dto/paginate-options.dto';
+import { CurrentUser } from 'src/common/utils/current-user.util';
 import { PaginatedResult } from 'src/common/utils/data-paginator.util';
 import { AddressesService } from '../addresses/addresses.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { GetUserDto } from './dto/get-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateWishlistDto } from './dto/wishlist.dto';
 import { InternalTokenGuard } from './guards/internal-token.guard';
 import { UsersService } from './users.service';
 
@@ -71,5 +75,40 @@ export class UsersController {
     const ids = Array.from(new Set(body.ids || [])).filter(Boolean);
     const users = await this.usersService.findLiteByIds(ids);
     return { data: users };
+  }
+
+  @Get(':userId/wishlist')
+  @UseGuards(JwtAuthGuard)
+  getWishlist(@Param('userId', ParseUUIDPipe) userId: string, @CurrentUser() user) {
+    this.assertSelfOrAdmin(userId, user);
+    return this.usersService.getWishlist(userId);
+  }
+
+  @Post(':userId/wishlist')
+  @UseGuards(JwtAuthGuard)
+  addToWishlist(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: UpdateWishlistDto,
+    @CurrentUser() user,
+  ) {
+    this.assertSelfOrAdmin(userId, user);
+    return this.usersService.addToWishlist(userId, body.productId);
+  }
+
+  @Delete(':userId/wishlist')
+  @UseGuards(JwtAuthGuard)
+  removeFromWishlist(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Query('productId', ParseUUIDPipe) productId: string,
+    @CurrentUser() user,
+  ) {
+    this.assertSelfOrAdmin(userId, user);
+    return this.usersService.removeFromWishlist(userId, productId);
+  }
+
+  private assertSelfOrAdmin(userId: string, user: { id?: string; isAdmin?: boolean }) {
+    if (!user?.isAdmin && user?.id !== userId) {
+      throw new ForbiddenException('You can only access your own wishlist');
+    }
   }
 }
