@@ -164,7 +164,11 @@ enum NotificationPriority {
 
 model Address {
   id        String    @id @default(uuid()) @db.Uuid
-  address   String?
+  addressName String
+  address   String
+  city      String
+  state     String
+  zip       String
   user      User?     @relation(fields: [userId], references: [id])
   userId    String?   @db.Uuid
   createdAt DateTime  @default(now())
