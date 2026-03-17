@@ -253,12 +253,18 @@ export class OrdersService {
       </div>
     `;
 
-    const info = await transporter.sendMail({
-      from,
-      to: payload.customerEmail,
-      subject: `Order Confirmation #${payload.orderId}`,
-      html,
-    });
+    let info: nodemailer.SentMessageInfo;
+    try {
+      info = await transporter.sendMail({
+        from,
+        to: payload.customerEmail,
+        subject: `Order Confirmation #${payload.orderId}`,
+        html,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'SMTP send failed';
+      throw new BadRequestException(message);
+    }
 
     return {
       success: true,
