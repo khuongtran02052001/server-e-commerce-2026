@@ -53,6 +53,9 @@ Implemented in backend:
     - `FREE_SHIPPING_THRESHOLD`
 - `create-order.dto` no longer accepts FE pricing fields.
 
+### Orders Email
+- `POST /orders/send-email` added for FE order confirmation email flow (Nodemailer SMTP).
+
 ## 2. Legacy / Not Directly Applicable
 
 These docs are mostly for old Sanity + Next.js app routes/components and should be treated as product UX reference, not backend contract:

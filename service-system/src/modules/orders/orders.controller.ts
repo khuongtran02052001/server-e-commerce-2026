@@ -4,6 +4,7 @@ import { CurrentUser } from 'src/common/utils/current-user.util';
 import { AddressesService } from '../addresses/addresses.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { SendOrderEmailDto } from './dto/send-order-email.dto';
 import { UserOrderActionDto } from './dto/user-order-action.dto';
 import { OrdersService } from './orders.service';
 
@@ -28,6 +29,11 @@ export class OrdersController {
   @Post()
   create(@Body() dto: CreateOrderDto, @CurrentUser() user) {
     return this.service.createOrder(dto, user);
+  }
+
+  @Post('send-email')
+  sendOrderEmail(@Body() dto: SendOrderEmailDto, @CurrentUser() user) {
+    return this.service.sendOrderEmail(dto, user);
   }
 
   @Get('count')

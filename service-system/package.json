@@ -61,6 +61,7 @@
     "dotenv": "^17.2.3",
     "google-auth-library": "^10.5.0",
     "install": "^0.13.0",
+    "nodemailer": "^6.10.1",
     "npm": "^11.6.2",
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",

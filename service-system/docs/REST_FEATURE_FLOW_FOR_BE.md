@@ -64,6 +64,8 @@ Expected behavior:
 ### 3.3 Orders (Customer)
 
 - Create order: `POST /orders`
+- Send confirmation email: `POST /orders/send-email`
+  - Uses Nodemailer with SMTP env (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, optional `SMTP_FROM`)
 - My orders: `GET /orders`
 - Order detail: `GET /orders/:id`
 - User action: `PATCH /orders/:id/action` with:

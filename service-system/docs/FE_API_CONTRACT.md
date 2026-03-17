@@ -120,6 +120,24 @@ Validation notes:
   - `shipping`
   - `tax`
 
+### POST `/orders/send-email`
+- JWT required
+- Sends order confirmation email via Nodemailer.
+Required env (service-system):
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM` (optional, defaults to `SMTP_USER`)
+Body:
+```json
+{ "orderData": { /* EmailOrderData */ } }
+```
+Response:
+```json
+{ "success": true, "message": "Order confirmation email queued" }
+```
+
 ### PATCH `/orders/:id/action`
 - JWT required
 Body:
