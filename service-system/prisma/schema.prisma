@@ -12,55 +12,54 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-
 }
 
 model User {
-  id            String         @id @default(uuid()) @db.Uuid
-  email         String         @unique
-  password      String?
-  firstName     String?
-  lastName      String?
-  phone         String?
-  dateOfBirth   DateTime?
-  profileImage  String?
-  addresses     Address[]
-  wishlist      Product[]
-  cart          CartItem[]
-  orders        Order[]
-  notifications Notification[]
-  walletBalance Int?
-  isAdmin       Boolean?
-  isEmployee    Boolean?
-  employeeRole  EmployeeRole?
-  rewardPoints  Int?
-  loyaltyPoints Int?
-  totalSpent    Int?
-  lastLogin     DateTime?
-  isActive      Boolean?      @default(false)
-  isBusiness    Boolean?      @default(false)
-  membershipType String?
-  premiumStatus  PremiumStatus @default(none)
-  businessStatus BusinessStatus @default(none)
-  premiumAppliedAt  DateTime?
-  premiumApprovedAt DateTime?
-  premiumApprovedBy String?
-  premiumRejectedAt DateTime?
+  id                 String           @id @default(uuid()) @db.Uuid
+  email              String           @unique
+  password           String?
+  firstName          String?
+  lastName           String?
+  phone              String?
+  dateOfBirth        DateTime?
+  profileImage       String?
+  addresses          Address[]
+  wishlist           Product[]
+  cart               CartItem[]
+  orders             Order[]
+  notifications      Notification[]
+  walletBalance      Int?
+  isAdmin            Boolean?
+  isEmployee         Boolean?
+  employeeRole       EmployeeRole?
+  rewardPoints       Int?
+  loyaltyPoints      Int?
+  totalSpent         Int?
+  lastLogin          DateTime?
+  isActive           Boolean?         @default(false)
+  isBusiness         Boolean?         @default(false)
+  membershipType     String?
+  premiumStatus      PremiumStatus    @default(none)
+  businessStatus     BusinessStatus   @default(none)
+  premiumAppliedAt   DateTime?
+  premiumApprovedAt  DateTime?
+  premiumApprovedBy  String?
+  premiumRejectedAt  DateTime?
   businessAppliedAt  DateTime?
   businessApprovedAt DateTime?
   businessApprovedBy String?
   businessRejectedAt DateTime?
-  rejectionReason String?
-  preferences   Json?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
-  blogs         Blog[]
-  reviews       Review[]
-  reviewHelpful ReviewHelpful[]
-  assignedOrders       Order[]          @relation("OrderAssignedDeliveryman")
-  receivedPayments     Order[]          @relation("OrderPaymentReceiver")
-  orderActionLogs      OrderActionLog[]
+  rejectionReason    String?
+  preferences        Json?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  deletedAt          DateTime?
+  blogs              Blog[]
+  reviews            Review[]
+  reviewHelpful      ReviewHelpful[]
+  assignedOrders     Order[]          @relation("OrderAssignedDeliveryman")
+  receivedPayments   Order[]          @relation("OrderPaymentReceiver")
+  orderActionLogs    OrderActionLog[]
 }
 
 model Order {
@@ -80,16 +79,30 @@ model Order {
   shipping   Int?
   tax        Int?
 
-  addressName String?
-  address     String?
-  city        String?
-  state       String?
-  zip         String?
-  assignedDeliverymanId String? @db.Uuid
-  cashCollectedAmount   Int?
-  cashCollectedAt       DateTime?
-  paymentReceivedAt     DateTime?
-  paymentReceivedById   String? @db.Uuid
+  addressName             String?
+  address                 String?
+  city                    String?
+  state                   String?
+  zip                     String?
+  addressConfirmedAt      DateTime?
+  addressConfirmedBy      String?
+  orderConfirmedAt        DateTime?
+  orderConfirmedBy        String?
+  packedAt                DateTime?
+  packedBy                String?
+  assignedDeliverymanName String?
+  assignedWarehouseAt     DateTime?
+  assignedWarehouseBy     String?
+  dispatchedAt            DateTime?
+  dispatchedBy            String?
+  deliveredAt             DateTime?
+  deliveredBy             String?
+  assignedDeliverymanId   String?   @db.Uuid
+  cashCollectedAmount     Int?
+  cashCollectedAt         DateTime?
+  paymentReceivedAt       DateTime?
+  paymentReceivedById     String?   @db.Uuid
+  paymentReceivedByLabel  String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -97,9 +110,9 @@ model Order {
 
   products            OrderProduct[]
   actionLogs          OrderActionLog[]
-  user                User   @relation(fields: [userId], references: [id])
-  assignedDeliveryman User?  @relation("OrderAssignedDeliveryman", fields: [assignedDeliverymanId], references: [id])
-  paymentReceivedBy   User?  @relation("OrderPaymentReceiver", fields: [paymentReceivedById], references: [id])
+  user                User             @relation(fields: [userId], references: [id])
+  assignedDeliveryman User?            @relation("OrderAssignedDeliveryman", fields: [assignedDeliverymanId], references: [id])
+  paymentReceivedBy   User?            @relation("OrderPaymentReceiver", fields: [paymentReceivedById], references: [id])
 }
 
 model OrderProduct {
@@ -113,14 +126,14 @@ model OrderProduct {
 }
 
 model OrderActionLog {
-  id                String   @id @default(uuid()) @db.Uuid
-  orderId           String   @db.Uuid
-  actorId           String?  @db.Uuid
-  actorRole         String?
-  action            String
-  notes             String?
+  id                  String   @id @default(uuid()) @db.Uuid
+  orderId             String   @db.Uuid
+  actorId             String?  @db.Uuid
+  actorRole           String?
+  action              String
+  notes               String?
   cashCollectedAmount Int?
-  createdAt         DateTime @default(now())
+  createdAt           DateTime @default(now())
 
   order Order @relation(fields: [orderId], references: [id])
   actor User? @relation(fields: [actorId], references: [id])
@@ -163,17 +176,17 @@ enum NotificationPriority {
 }
 
 model Address {
-  id        String    @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
   addressName String
-  address   String
-  city      String
-  state     String
-  zip       String
-  user      User?     @relation(fields: [userId], references: [id])
-  userId    String?   @db.Uuid
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  address     String
+  city        String
+  state       String
+  zip         String
+  user        User?     @relation(fields: [userId], references: [id])
+  userId      String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 }
 
 model CartItem {
@@ -188,31 +201,31 @@ model CartItem {
 }
 
 model UserAccessRequest {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
   userId      String?
   email       String
   firstName   String?
   lastName    String?
-  status      String   @default("pending")
-  requestedAt DateTime @default(now())
+  status      String    @default("pending")
+  requestedAt DateTime  @default(now())
   approvedAt  DateTime?
   approvedBy  String?
   notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model NewsletterSubscription {
-  id             String   @id @default(uuid()) @db.Uuid
-  email          String   @unique
-  status         String   @default("active")
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique
+  status         String    @default("active")
   source         String?
   ipAddress      String?
   userAgent      String?
-  subscribedAt   DateTime @default(now())
+  subscribedAt   DateTime  @default(now())
   unsubscribedAt DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model ContactMessage {
@@ -352,33 +365,33 @@ enum ReviewStatus {
 }
 
 model Review {
-  id                 String         @id @default(uuid()) @db.Uuid
-  productId          String         @db.Uuid
-  userId             String         @db.Uuid
+  id                 String       @id @default(uuid()) @db.Uuid
+  productId          String       @db.Uuid
+  userId             String       @db.Uuid
   rating             Int
   title              String
   content            String
-  helpful            Int            @default(0)
-  isVerifiedPurchase Boolean        @default(false)
-  status             ReviewStatus   @default(pending)
+  helpful            Int          @default(0)
+  isVerifiedPurchase Boolean      @default(false)
+  status             ReviewStatus @default(pending)
   approvedAt         DateTime?
   approvedBy         String?
   adminNotes         String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
   deletedAt          DateTime?
 
-  product   Product        @relation(fields: [productId], references: [id])
-  user      User           @relation(fields: [userId], references: [id])
+  product   Product         @relation(fields: [productId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
   helpfulBy ReviewHelpful[]
 
-  @@index([productId, status, createdAt])
   @@unique([productId, userId])
+  @@index([productId, status, createdAt])
 }
 
 model ReviewHelpful {
-  reviewId String   @db.Uuid
-  userId   String   @db.Uuid
+  reviewId  String   @db.Uuid
+  userId    String   @db.Uuid
   createdAt DateTime @default(now())
 
   review Review @relation(fields: [reviewId], references: [id])

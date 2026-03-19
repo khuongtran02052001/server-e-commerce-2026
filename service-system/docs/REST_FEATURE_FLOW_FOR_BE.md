@@ -33,6 +33,7 @@ Use this doc when implementing or validating BE endpoints for FE integration.
 4. FE stores JWT in session token and uses it for protected APIs.
 
 Critical fields returned by `/auth/me` for FE guards/UI:
+
 - `id`, `email`
 - `isAdmin`
 - `isEmployee`
@@ -42,22 +43,26 @@ Critical fields returned by `/auth/me` for FE guards/UI:
 ### 3.2 User Profile / Dashboard
 
 Primary FE fetch:
+
 - `GET /auth/me`
 
 Related FE screens then call:
+
 - Canonical: `GET /orders` (my orders), `GET /orders/:id`, `/reviews`, `/newsletter`
-- Compatibility (legacy bridge still available): 
+- Compatibility (legacy bridge still available):
   - `GET /user/dashboard/stats`
   - `GET /user/orders`
   - `GET /user/notifications`
   - `GET /user/addresses`
 
 Wishlist:
+
 - FE uses `/users/:userId/wishlist`
 - Only owner or admin can access
 - Methods: `GET`, `POST { productId }`, `DELETE ?productId=`
 
 Expected behavior:
+
 - 401 -> FE redirects to sign-in.
 - 200 with nullable profile fields is valid (no forced sign-out).
 
@@ -73,9 +78,11 @@ Expected behavior:
   - `confirm_received`
 
 Server-side totals must be authoritative:
+
 - `subtotal`, `tax`, `shipping`, `totalPrice`
 
 Create-order execution rules (BE updated):
+
 1. FE sends only:
    - `items[{ productId, quantity }]`
    - `paymentMethod`
@@ -93,6 +100,7 @@ Create-order execution rules (BE updated):
 7. BE creates order + decrements stock in a single DB transaction.
 
 DTO contract notes:
+
 - `items[].productId`: UUID
 - `items[].quantity`: integer >= 1
 - Removed from request payload:
@@ -111,16 +119,19 @@ DTO contract notes:
 - Unified operation: `POST /admin/employees/manage-user`
 
 Current FE payload for unified operation:
+
 ```json
 { "email": "staff@shop.com", "role": "ACCOUNTS", "active": true }
 ```
 
 Role mapping note:
+
 - FE role `packer` maps to DB enum `WARE_HOUSE`.
 
 ### 3.5 Employee Order Workflow
 
 Workflow endpoints used by FE:
+
 - `PATCH /admin/orders/:id/address-confirm`
 - `PATCH /admin/orders/:id/order-confirm`
 - `PATCH /admin/orders/:id/pack`
@@ -133,19 +144,32 @@ Workflow endpoints used by FE:
 - `GET /admin/orders/:id/workflow`
 
 Cash collection rule (already enforced in FE):
+
 - For COD + pending/unpaid, FE sends:
+
 ```json
 { "cashCollectedAmount": 250000, "notes": "optional" }
 ```
 
 Status pipeline expected by FE:
+
 - `packed -> ready_for_delivery -> out_for_delivery -> delivered -> completed`
+
+State ownership:
+
+- `Order` keeps current workflow snapshot for FE rendering:
+  - status
+  - timestamp fields (`addressConfirmedAt`, `orderConfirmedAt`, `packedAt`, `assignedWarehouseAt`, `dispatchedAt`, `deliveredAt`, `paymentReceivedAt`)
+  - actor label fields (`addressConfirmedBy`, `orderConfirmedBy`, `packedBy`, `assignedWarehouseBy`, `dispatchedBy`, `deliveredBy`, `paymentReceivedByLabel`)
+- `OrderActionLog` keeps audit history only.
+- FE should render current state from `Order`, not infer it from logs.
 
 ### 3.6 Admin Analytics
 
 - `GET /admin/analytics?period=7d|30d|90d|1y`
 
 Expected response shape:
+
 - `revenue`, `orders`, `customers`, `products`, `topProducts`, `recentActivity`
 
 ### 3.7 Reviews

@@ -700,7 +700,7 @@ export class AdminService {
 
   private async logOrderAction(
     orderId: string,
-    actor: { id: string; employeeRole?: string },
+    actor: { id: string; email?: string; employeeRole?: string },
     action: string,
     notes?: string,
     cashCollectedAmount?: number,
@@ -715,9 +715,28 @@ export class AdminService {
     });
   }
 
+  private getActorLabel(actor: { id: string; email?: string }) {
+    return actor.email || actor.id;
+  }
+
+  private getUserDisplayName(user: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  }) {
+    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+    return fullName || user.email || null;
+  }
+
   async confirmAddress(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: WorkflowNoteDto,
   ) {
     this.ensureEmployee(actor, ['CALL_CENTER', 'INCHARGE']);
@@ -728,6 +747,8 @@ export class AdminService {
 
     const updated = await this.adminRepository.updateOrderById(orderId, {
       status: 'address_confirmed',
+      addressConfirmedAt: new Date(),
+      addressConfirmedBy: this.getActorLabel(actor),
     });
     await this.logOrderAction(orderId, actor, 'ADDRESS_CONFIRMED', dto.notes);
     return { success: true, message: 'Address confirmed', order: updated };
@@ -735,7 +756,13 @@ export class AdminService {
 
   async confirmOrder(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: WorkflowNoteDto,
   ) {
     this.ensureEmployee(actor, ['CALL_CENTER', 'INCHARGE']);
@@ -746,6 +773,8 @@ export class AdminService {
 
     const updated = await this.adminRepository.updateOrderById(orderId, {
       status: 'order_confirmed',
+      orderConfirmedAt: new Date(),
+      orderConfirmedBy: this.getActorLabel(actor),
     });
     await this.logOrderAction(orderId, actor, 'ORDER_CONFIRMED', dto.notes);
     return { success: true, message: 'Order confirmed', order: updated };
@@ -753,7 +782,13 @@ export class AdminService {
 
   async markPacked(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: WorkflowNoteDto,
   ) {
     this.ensureEmployee(actor, ['PACKER', 'INCHARGE']);
@@ -764,6 +799,8 @@ export class AdminService {
 
     const updated = await this.adminRepository.updateOrderById(orderId, {
       status: 'packed',
+      packedAt: new Date(),
+      packedBy: this.getActorLabel(actor),
     });
     await this.logOrderAction(orderId, actor, 'ORDER_PACKED', dto.notes);
     return { success: true, message: 'Order packed', order: updated };
@@ -771,7 +808,13 @@ export class AdminService {
 
   async assignDeliveryman(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: AssignDeliveryDto,
   ) {
     this.ensureEmployee(actor, ['PACKER', 'INCHARGE']);
@@ -802,6 +845,9 @@ export class AdminService {
         connect: { id: deliverymanId },
       },
       status: 'ready_for_delivery',
+      assignedDeliverymanName: this.getUserDisplayName(assigned),
+      assignedWarehouseAt: new Date(),
+      assignedWarehouseBy: this.getActorLabel(actor),
     });
     await this.logOrderAction(
       orderId,
@@ -814,7 +860,13 @@ export class AdminService {
 
   async startDelivery(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: WorkflowNoteDto,
   ) {
     this.ensureEmployee(actor, ['DELIVERY_MAN', 'INCHARGE']);
@@ -828,6 +880,8 @@ export class AdminService {
 
     const updated = await this.adminRepository.updateOrderById(orderId, {
       status: 'out_for_delivery',
+      dispatchedAt: new Date(),
+      dispatchedBy: this.getActorLabel(actor),
     });
     await this.logOrderAction(orderId, actor, 'DELIVERY_STARTED', dto.notes);
     return { success: true, message: 'Delivery started', order: updated };
@@ -835,7 +889,13 @@ export class AdminService {
 
   async markDelivered(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: MarkDeliveredDto,
   ) {
     this.ensureEmployee(actor, ['DELIVERY_MAN', 'INCHARGE']);
@@ -857,6 +917,8 @@ export class AdminService {
 
     const updated = await this.adminRepository.updateOrderById(orderId, {
       status: 'delivered',
+      deliveredAt: new Date(),
+      deliveredBy: this.getActorLabel(actor),
       ...(dto.cashCollectedAmount != null
         ? {
             cashCollectedAmount: dto.cashCollectedAmount,
@@ -876,7 +938,13 @@ export class AdminService {
 
   async rescheduleDelivery(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: WorkflowNoteDto,
   ) {
     this.ensureEmployee(actor, ['DELIVERY_MAN', 'INCHARGE']);
@@ -897,7 +965,13 @@ export class AdminService {
 
   async markDeliveryFailed(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: WorkflowNoteDto,
   ) {
     this.ensureEmployee(actor, ['DELIVERY_MAN', 'INCHARGE']);
@@ -918,7 +992,13 @@ export class AdminService {
 
   async receivePayment(
     orderId: string,
-    actor: { id: string; isAdmin?: boolean; isEmployee?: boolean; employeeRole?: string },
+    actor: {
+      id: string;
+      email?: string;
+      isAdmin?: boolean;
+      isEmployee?: boolean;
+      employeeRole?: string;
+    },
     dto: WorkflowNoteDto,
   ) {
     this.ensureEmployee(actor, ['ACCOUNTS', 'INCHARGE']);
@@ -934,6 +1014,7 @@ export class AdminService {
       paymentStatus: 'paid',
       status: 'completed',
       paymentReceivedAt: new Date(),
+      paymentReceivedByLabel: this.getActorLabel(actor),
       paymentReceivedBy: {
         connect: { id: actor.id },
       },

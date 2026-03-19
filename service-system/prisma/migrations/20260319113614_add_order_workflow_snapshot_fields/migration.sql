@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "Order" ADD COLUMN     "addressConfirmedAt" TIMESTAMP(3),
+ADD COLUMN     "addressConfirmedBy" TEXT,
+ADD COLUMN     "assignedDeliverymanName" TEXT,
+ADD COLUMN     "assignedWarehouseAt" TIMESTAMP(3),
+ADD COLUMN     "assignedWarehouseBy" TEXT,
+ADD COLUMN     "deliveredAt" TIMESTAMP(3),
+ADD COLUMN     "deliveredBy" TEXT,
+ADD COLUMN     "dispatchedAt" TIMESTAMP(3),
+ADD COLUMN     "dispatchedBy" TEXT,
+ADD COLUMN     "orderConfirmedAt" TIMESTAMP(3),
+ADD COLUMN     "orderConfirmedBy" TEXT,
+ADD COLUMN     "packedAt" TIMESTAMP(3),
+ADD COLUMN     "packedBy" TEXT,
+ADD COLUMN     "paymentReceivedByLabel" TEXT;
