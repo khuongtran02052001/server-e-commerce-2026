@@ -11,7 +11,7 @@ async function bootstrap() {
   const corsOptions: CorsOptions = {
     origin: process.env.CORS_ALLOW_ORIGINS
       ? process.env.CORS_ALLOW_ORIGINS.split(',').map((o) => o.trim())
-      : true,
+      : ['https://e-commerce-2026-three.vercel.app', /^https?:\/\/localhost:\d+$/],
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     credentials: true,
